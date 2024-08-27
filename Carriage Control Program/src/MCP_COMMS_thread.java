@@ -1,26 +1,12 @@
 import java.net.InetAddress;
 import java.nio.Buffer;
-import java.lang.*;
-import netscape.javascript.JSObject;
-import org.json.simple.*;
+import org.json.simple.JSONObject;
 
 
-public class MCP_COMMS_thread {
+
+public class MCP_COMMS_thread extends COMMS_thread {
     
-    public Error connectToMCP(InetAddress IPAddress, int port){
-        return null;
-    };
-
-    public Void disconnect(){
-        return null;
-    };
-
     public JSONObject getDataFromMCP(){
         return null;
     };  
-
-    public Buffer getBuffer(){
-        return null;
-    }
-
 }

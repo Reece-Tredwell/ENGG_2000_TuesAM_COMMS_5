@@ -1,12 +1,9 @@
 import org.json.simple.JSONObject;
 
-import netscape.javascript.JSObject;
-
-public class CCPMainProcessThread {
+public class CCPMainProcessThread{
     public String convertToCommand(){
         return null;
     };
-
     public String formatDataForMCP(){
         return null;
     }
