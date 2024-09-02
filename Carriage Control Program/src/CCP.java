@@ -5,4 +5,8 @@ public class CCP{
     InetAddress mcpPort;
     int carriageIP;
     int carriagePort;
+
+    public static void execute(){
+        //Do something
+    }
 }
