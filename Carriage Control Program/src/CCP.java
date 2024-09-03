@@ -2,7 +2,7 @@ import java.net.InetAddress;
 
 public class CCP{
     InetAddress mcpIP;
-    InetAddress mcpPort;
+    int MCPPort;
     int carriageIP;
     int carriagePort;
 
