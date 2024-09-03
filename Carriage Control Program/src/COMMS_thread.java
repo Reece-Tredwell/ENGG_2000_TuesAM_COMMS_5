@@ -8,8 +8,8 @@ public class COMMS_thread {
 public JSONObject sendBufferToMain(JSONObject data){
     return null;
 }
-public Void send(JSONObject data){
-    return null;
+public void send(JSONObject data){
+    
 };
 // Need to implement a more split up option for updating
 }
