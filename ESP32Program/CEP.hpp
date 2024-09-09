@@ -1,7 +1,7 @@
 #pragma once
 #include "ErrorCode.hpp"
 
-#define CEP_WIFI_CONNECT_ATTEMPTS 5
+#define CEP_WIFI_TIMEOUT 5
 
 namespace CEP {
   class CEP {
@@ -24,16 +24,16 @@ namespace CEP {
 
       WiFi.begin(ssid);
 
-      uint32_t attempts = 0;
-      while (WiFi.status() != WL_CONNECTED && attempts < CEP_WIFI_CONNECT_ATTEMPTS) {
+      uint32_t timeout = 0;
+      while (WiFi.status() != WL_CONNECTED && timeout < CEP_WIFI_TIMEOUT) {
         delay(1000);
-        attempts++
+        timeout++;
       }
 
-      if (attempts >= CEP_WIFI_CONNECT_ATTEMPTS) {
+      if (timeout >= CEP_WIFI_TIMEOUT) {
         Serial.print("Failed to connect in ");
-        Serial.print(attempts);
-        Serial.println(" attempts");
+        Serial.print(timeout);
+        Serial.println(" seconds");
         return ErrorCode::CONNECTION_FAILED;
       }
 
