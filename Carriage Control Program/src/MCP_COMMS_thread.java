@@ -4,7 +4,7 @@ import org.json.simple.JSONObject;
 
 
 
-public class MCP_COMMS_thread extends COMMS_thread {
+public class MCP_COMMS_thread{
     public JSONObject getDataFromMCP(){ //Writes buffer to main
         return null;
     };
