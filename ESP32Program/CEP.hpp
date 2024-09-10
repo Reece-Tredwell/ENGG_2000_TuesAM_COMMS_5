@@ -5,8 +5,18 @@
 #define CEP_MAX_PACKET_SIZE 512
 #define CEP_WIFI_TIMEOUT 5
 
-#define IR_SENSOR_PIN 3
-#define IR_SENSOR_LED_PIN 13
+#define IR_SENSOR_PIN 25
+#define SERVO_DATA_PIN = 24
+#define IR_PHOTORESISTOR_PIN = 26
+#define PHOTORESISTOR_1_PIN
+
+#define B_LED_PIN 14
+#define R_LED_PIN 13
+#define G_LED_PIN 11
+#define Y_LED_PIN 12
+
+#define IN_1 6
+#define IN_2 7
 
 namespace CEP {
   class CEP {
@@ -30,6 +40,14 @@ namespace CEP {
       Serial.print("Connecting to ");
       Serial.println(ssid);
 
+      IPAddress staticIP(10, 20, 30, 110);
+      uint32_t port = 3010;
+
+      if (!WiFi.config(staticIP)) {
+        Serial.println("Failed to configure Static IP");
+        return ErrorCode::CONFIG_FAILED;
+    }
+
       WiFi.begin(ssid);
 
       uint32_t timeout = 0;
@@ -49,7 +67,8 @@ namespace CEP {
 
       Serial.print("WiFi connected. Local IP:");
       Serial.println(local);
-
+      
+      udp.begin(port);
       return ErrorCode::SUCCESSFUL;
     }
     void disconnect() {
