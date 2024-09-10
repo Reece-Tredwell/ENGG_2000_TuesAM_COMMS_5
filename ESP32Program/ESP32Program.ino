@@ -10,6 +10,7 @@ void setup() {
 
   if (cep.connect(CREDENTIALS_SSID, CCP_IP, CCP_PORT) != CEP::ErrorCode::SUCCESSFUL)
     exit(-1);
+
 }
 
 void loop() {
