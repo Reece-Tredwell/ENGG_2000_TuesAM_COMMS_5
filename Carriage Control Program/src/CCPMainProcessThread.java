@@ -21,7 +21,8 @@ public class CCPMainProcessThread{
     public JSONObject convertToCommand(JSONObject Data){
         //get the station
         String message = (String) Data.get("message");
-        JSONObject Tester = null;
+        JSONObject Tester;
+        System.out.println(message);
         if(message == "EXEC"){
             String action = (String) Data.get("action");
             Tester = new JSONObject();

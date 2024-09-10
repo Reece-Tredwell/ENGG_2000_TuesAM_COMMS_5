@@ -28,20 +28,21 @@ public void execute(){
     //it will contain a loop that will alwaysw be
     //true until it is called to stop.
     //this method will be called in main
-    JSONObject TestObject = new JSONObject();
-    TestObject.put("client_type", "ccp");
-    TestObject.put("message", "EXEC");
-    TestObject.put("client_id", "BRXX");
-    TestObject.put("client_type", "ccp");
-    TestObject.put("timestamp","2019-09-07T15:50+00Z");
-    TestObject.put("action","SLOW");
-    CCPMainProcessThread Main = new CCPMainProcessThread();
-    Main.convertToCommand(TestObject);
-    
-// ;
-//     MCP_COMMS_thread MCP = new MCP_COMMS_thread();
-//     MCP.getDataFromMCP();
-
+    while(true){
+        JSONObject TestObject = new JSONObject();
+        TestObject.put("client_type", "ccp");
+        TestObject.put("message", "EXEC");
+        TestObject.put("client_id", "BRXX");
+        TestObject.put("client_type", "ccp");
+        TestObject.put("timestamp","2019-09-07T15:50+00Z");
+        TestObject.put("action","SLOW");
+        CCPMainProcessThread Main = new CCPMainProcessThread();
+        String IP = "10.20.30.110";
+        int MCPPort = 3010;
+        JSONObject message = Main.convertToCommand(TestObject);
+        CEP_COMMS_thread CEP = new CEP_COMMS_thread(message, IP, MCPPort);
+        CEP.writeToESP32();
+}
 }
 
 }
