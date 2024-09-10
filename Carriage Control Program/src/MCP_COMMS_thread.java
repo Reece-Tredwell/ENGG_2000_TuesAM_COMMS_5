@@ -1,20 +1,18 @@
 import java.net.InetAddress;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import org.json.simple.JSONObject;
+
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 
-import org.json.simple.JSONObject;
 
 
-public class MCP_COMMS_thread extends COMMS_thread {
-    int port ;
-    public JSONObject getDataFromMCP(){
-       ByteBuffer buffer = ByteBuffer.allocate(100);
-        return null;
-    };  
-
-    try {
+public class MCP_COMMS_thread{
+    public JSONObject getDataFromMCP() throws IOException{
+    //needs to establish connection to the MCP and get the data
+        int port = 1;//needs to be changed to real port
         // Create a DatagramSocket to listen on the specified port
         DatagramSocket socket = new DatagramSocket(port);
 
@@ -38,8 +36,7 @@ public class MCP_COMMS_thread extends COMMS_thread {
 
             // Optionally, process the data or break the loop if needed
         }
-    } catch (Exception e) {
-        e.printStackTrace();
+
     }
 }
 
