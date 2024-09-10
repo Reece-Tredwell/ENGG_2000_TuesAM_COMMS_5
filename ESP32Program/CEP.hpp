@@ -61,13 +61,11 @@ namespace CEP {
     void onDoorCommand(bool state) {
 
     }
-    void onLedCommand(int32_t pin, bool state)
-    {
+    void onLedCommand(int32_t pin, bool state) {
       pinMode(pin, OUTPUT);
       digitalWrite(pin, state);
     }
-    void onStopCommand()
-    {
+    void onStopCommand() {
       
     }
     void processPackets() {
@@ -118,10 +116,13 @@ namespace CEP {
         Serial.println(command);
       }
     }
-    void update() {
+    void sendPacket(String data) {
       udp.beginPacket(remoteIP, remotePort);
-      udp.print("Hello!");
+      udp.print(data);
       udp.endPacket();
+    }
+    void update() {
+      sendPacket("Hello!");
 
       // Self-emergency stop
       somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
