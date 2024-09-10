@@ -5,6 +5,7 @@ import org.json.simple.JSONObject;
 
 
 public class MCP_COMMS_thread{
+
     public JSONObject getDataFromMCP(){
     //needs to establish connection to the MCP and get the data
         JSONObject TestObject = new JSONObject();
@@ -12,7 +13,5 @@ public class MCP_COMMS_thread{
         System.out.println(TestObject);    
         return TestObject;
     };  
-
-    
 }
 
