@@ -125,7 +125,7 @@ namespace CEP {
       sendPacket("Hello!");
 
       // Self-emergency stop
-      somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
+      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
       if (somethingIsInFrontOfUs) {
         onStopCommand();
       }
