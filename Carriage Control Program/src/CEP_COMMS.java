@@ -4,13 +4,13 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import org.json.simple.JSONObject;
 
-public class CEP_COMMS_thread{
+public class CEP_COMMS{
 
     JSONObject message;
     String ESPAdress;  // or use the server's IP address
     int port;
 
-    CEP_COMMS_thread(JSONObject message, String ESPAdress, int port){
+    CEP_COMMS(JSONObject message, String ESPAdress, int port){
         this.message = message;
         this.ESPAdress = ESPAdress;  // oSr use the server's IP address
         this.port = port;

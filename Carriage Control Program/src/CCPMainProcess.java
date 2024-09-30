@@ -3,15 +3,15 @@ import java.nio.ByteBuffer;
 import java.util.Hashtable;
 import java.util.concurrent.*;
 
-public class CCPMainProcessThread{
+public class CCPMainProcess{
 
     // ConcurrentLinkedQueue<ByteBuffer> MCPbuffers;
     // ConcurrentLinkedQueue<ByteBuffer> CEPbuffers;
-    CCPMainProcessThread MCP;
-    CCPMainProcessThread CEP;
+    CCPMainProcess MCP;
+    CCPMainProcess CEP;
 
 
-    public CCPMainProcessThread(){
+    public CCPMainProcess(){
         // this.MCPbuffers=MCPbuffers;
         // this.CEPbuffers=CEPbuffers;
         // this.MCPRef=MCPRef;

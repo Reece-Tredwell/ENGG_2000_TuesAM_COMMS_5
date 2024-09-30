@@ -1,6 +1,4 @@
 import java.net.InetAddress;
-import java.nio.ByteBuffer;
-
 import org.json.simple.JSONObject;
 
 public class CCP{
@@ -9,25 +7,17 @@ public class CCP{
     int carriageIP;
     int carriagePort;
     InetAddress CEPIP;
-    MCP_COMMS_thread MCP;
-    CEP_COMMS_thread CEP;
-    // ByteBuffer CEPBuffer = ByteBuffer.allocate(4);
-    // ByteBuffer MCPBuffer = ByteBuffer.allocate(4);
+    MCP_COMMS MCP;
+    CEP_COMMS CEP;
 
-public CCP(){//InetAddress mcpIP, int carriageIP, int carriagePort, int MCPPort, InetAddress CEPIP, MCP_COMMS_thread MCP, CEP_COMMS_thread CEP .... ADD as param in constructor when ready.
-// this.mcpIP = mcpIP;
-// this.MCPPort = MCPPort;
-// this.carriageIP = carriageIP;
-// this.carriagePort = carriagePort;
-// this.CEPIP=CEPIP;
-//this.MCP=MCP;
-//this.CEP = CEP;
+
+public CCP(){
 }
 public void execute(){
-    //This is where all events will be called,
-    //it will contain a loop that will alwaysw be
-    //true until it is called to stop.
-    //this method will be called in main
+    /*/
+    This is where all events will be called, it will contain a loop that will always be true until it is called to stop. 
+    This method will be called in main
+    /*/
     while(true){
         JSONObject TestObject = new JSONObject();
         TestObject.put("client_type", "ccp");
@@ -36,11 +26,11 @@ public void execute(){
         TestObject.put("client_type", "ccp");
         TestObject.put("timestamp","2019-09-07T15:50+00Z");
         TestObject.put("action","SLOW");
-        CCPMainProcessThread Main = new CCPMainProcessThread();
+        CCPMainProcess Main = new CCPMainProcess();
         String IP = "10.20.30.110";
         int MCPPort = 3010;
         JSONObject message = Main.convertToCommand(TestObject);
-        CEP_COMMS_thread CEP = new CEP_COMMS_thread(message, IP, MCPPort);
+        CEP_COMMS CEP = new CEP_COMMS(message, IP, MCPPort);
         CEP.writeToESP32();
 }
 }

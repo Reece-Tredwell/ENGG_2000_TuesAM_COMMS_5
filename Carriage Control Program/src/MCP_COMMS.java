@@ -9,9 +9,9 @@ import java.net.DatagramSocket;
 
 
 
-public class MCP_COMMS_thread{
+public class MCP_COMMS{
     public JSONObject getDataFromMCP() throws IOException{
-    //needs to establish connection to the MCP and get the data
+        //needs to establish connection to the MCP and get the data
         int port = 1;//needs to be changed to real port
         // Create a DatagramSocket to listen on the specified port
         DatagramSocket socket = new DatagramSocket(port);
@@ -33,10 +33,9 @@ public class MCP_COMMS_thread{
 
             // Print the received data
             System.out.println("Received: " + receivedData);
-
+            
             // Optionally, process the data or break the loop if needed
         }
-
     }
 }
 
