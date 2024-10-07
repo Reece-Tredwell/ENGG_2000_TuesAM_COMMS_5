@@ -4,9 +4,6 @@ import java.util.Hashtable;
 import java.util.concurrent.*;
 
 public class CCPMainProcess{
-
-    // ConcurrentLinkedQueue<ByteBuffer> MCPbuffers;
-    // ConcurrentLinkedQueue<ByteBuffer> CEPbuffers;
     CCPMainProcess MCP;
     CCPMainProcess CEP;
 
@@ -36,23 +33,6 @@ public class CCPMainProcess{
         return Tester;
     }
 
-    // public void getFromBuffer(ByteBuffer buffer){
-    //     int index = 0;
-    //     while(buffer.hasRemaining()){
-    //         byte data = buffer.get(index);
-    //         char c = (char)data;
-    //         System.out.println(c);
-    //         index++;
-    //     }
-    //     System.out.println(index);
-    // }
-
-    // public void sendBufferToCEPThread(ByteBuffer CEPbuffers){
-
-    // }
-    // public void sendBufferToMCPThread(ByteBuffer MCPbuffers){
-    
-    // }
     public void update(){
 
     }
