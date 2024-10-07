@@ -27,11 +27,9 @@ public void execute(){
         TestObject.put("timestamp","2019-09-07T15:50+00Z");
         TestObject.put("action","SLOW");
         CCPMainProcess Main = new CCPMainProcess();
-        String IP = "10.20.30.110";
-        int MCPPort = 3010;
-        JSONObject message = Main.convertToCommand(TestObject);
-        CEP_COMMS CEP = new CEP_COMMS(message, IP, MCPPort);
-        CEP.writeToESP32();
+        CEP_COMMS CEP = new CEP_COMMS(Main.convertToCommand(TestObject), "10.20.30.110", 3010);
+        CEP.writeToESP32(false);
+        CEP.running = false;
 }
 }
 
