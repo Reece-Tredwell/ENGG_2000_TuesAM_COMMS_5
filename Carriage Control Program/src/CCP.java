@@ -21,7 +21,7 @@ public void execute(){
     while(true){
         JSONObject TestObject = new JSONObject();
         TestObject.put("client_type", "ccp");
-        TestObject.put("message", "EXEC");
+        TestObject.put("message", "SPEED");
         TestObject.put("client_id", "BRXX");
         TestObject.put("client_type", "ccp");
         TestObject.put("timestamp","2019-09-07T15:50+00Z");
@@ -29,7 +29,6 @@ public void execute(){
         CCPMainProcess Main = new CCPMainProcess();
         CEP_COMMS CEP = new CEP_COMMS(Main.convertToCommand(TestObject), "10.20.30.110", 3010);
         CEP.writeToESP32(false);
-        CEP.running = false;
 }
 }
 
