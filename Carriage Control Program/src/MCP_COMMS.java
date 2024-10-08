@@ -17,7 +17,6 @@ public class MCP_COMMS{
             socket.receive(receivePacket);
             String receivedData = new String(receivePacket.getData(), 0, receivePacket.getLength());
             System.out.println("Received: " + receivedData);
-            
         }
     }
 }

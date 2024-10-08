@@ -34,7 +34,7 @@ public void execute(){
         CEP_COMMS CEP = new CEP_COMMS(Main.convertToCommand(TestObject), "10.20.30.110", 3010);
         CEP.writeToESP32(false);
         CEP.running = false;
-}
+    }
 }
 
 }
