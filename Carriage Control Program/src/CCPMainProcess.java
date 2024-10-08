@@ -23,11 +23,11 @@ public class CCPMainProcess{
         if(message == "EXEC"){
             String action = (String) Data.get("action");
             Tester = new JSONObject();
-            Tester.put("Command",message);
+            Tester.put("cmd",message);
             Tester.put("action",action);
         }else{
             Tester = new JSONObject();
-            Tester.put("Command",message);
+            Tester.put("cmd",message);
         }
         System.out.println(Tester);
         return Tester;

@@ -16,14 +16,14 @@ public class CEP_COMMS{
         this.port = port;
     }
 
-    public void writeToESP32(boolean ACK){
+    public void writeToESP32(boolean ACK) {
         while(running){
             try {
                 if(ACK){
                     this.message = new JSONObject();
                     this.message.put("message", "ACK");
                 }else{
-                    wait(2000);
+                    Thread.sleep(2000);
                 }
                 System.out.println(message);
                 DatagramSocket socket = new DatagramSocket();
