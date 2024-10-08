@@ -1,6 +1,8 @@
 #pragma once
 #include "ErrorCode.hpp"
 #include <ArduinoJson.h>
+#include <WiFi.h>
+#include <WiFiUDP.h>
 
 #define CEP_MAX_PACKET_SIZE 512
 #define CEP_WIFI_TIMEOUT 5
@@ -29,9 +31,10 @@ namespace CEP {
 
       Serial.print("Connecting to ");
       Serial.println(ssid);
-
+      IPAddress ip = IPAddress(10, 20, 30, 110);
+      WiFi.config(ip);
       WiFi.begin(ssid);
-
+      udp.begin(3010);
       uint32_t timeout = 0;
       while (WiFi.status() != WL_CONNECTED && timeout < CEP_WIFI_TIMEOUT) {
         delay(1000);
@@ -45,10 +48,9 @@ namespace CEP {
         return ErrorCode::CONNECTION_FAILED;
       }
 
-      local = WiFi.localIP();
-
+      //local = WiFi.localIP();
       Serial.print("WiFi connected. Local IP:");
-      Serial.println(local);
+      Serial.println(WiFi.localIP());
 
       return ErrorCode::SUCCESSFUL;
     }
@@ -81,7 +83,7 @@ namespace CEP {
 
       StaticJsonDocument<200> doc;
       DeserializationError error = deserializeJson(doc, packetBuffer);
-
+      
       if (error) {
         Serial.print("Failed to parse JSON: ");
         Serial.println(error.c_str());
@@ -94,6 +96,7 @@ namespace CEP {
       uint32_t timestamp = doc["timestamp"];
 
       // Drop old speed packets
+      
       if (command == "SPEED" && timestamp > lastReceivedSpeedCommandTimestamp) {
         lastReceivedSpeedCommandTimestamp = timestamp;
         onSpeedCommand(doc["speed"]);
@@ -124,11 +127,11 @@ namespace CEP {
     void update() {
       sendPacket("Hello!");
 
-      // Self-emergency stop
-      somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
-      if (somethingIsInFrontOfUs) {
-        onStopCommand();
-      }
+      // // Self-emergency stop
+      // somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
+      // if (somethingIsInFrontOfUs) {
+      //   onStopCommand();
+      // }
 
       processPackets();
     }
