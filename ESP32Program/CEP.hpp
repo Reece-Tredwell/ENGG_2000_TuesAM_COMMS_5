@@ -84,6 +84,7 @@ namespace CEP {
       WiFi.disconnect();
     }
     ErrorCode onSpeedCommand(int32_t speed) {
+      // https://www.pololu.com/product/4733
       if (speed > 0) {
         analogWrite(MOTOR_IN_1_PIN, 63);
       } else {
