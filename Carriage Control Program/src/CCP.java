@@ -6,7 +6,6 @@ public class CCP{
     int MCPPort;
     int carriageIP;
     int carriagePort;
-    InetAddress CEPIP;
     MCP_COMMS MCP;
     CEP_COMMS CEP;
 
