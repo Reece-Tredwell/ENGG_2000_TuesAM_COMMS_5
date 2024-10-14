@@ -27,7 +27,8 @@ public class CCP {
 
     private int sequenceNumber;
 
-    long lastHeartbeatTime = 0;
+    long mcpLastHeartbeatTime = 0;
+    long cepLastHeartbeatTime = 0;
 
     public void init(String mcpIp, String cepIp, int mcpPort, int cepPort) {
         try {
@@ -44,6 +45,8 @@ public class CCP {
 
             mcpChannel.configureBlocking(false);
             cepChannel.configureBlocking(false);
+
+            System.out.println("Setup connections");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -55,10 +58,47 @@ public class CCP {
     }
 
     public void update() {
+        JSONObject mcpResponse = receiveMessageFromMCP();
+        if (mcpResponse != null) {
+            String messageType = (String)mcpResponse.get("message");
+
+            if (messageType.equals("AKIN")) {
+                // Do nothing
+            } else if (messageType.equals("AKST")) {
+                // Do nothing
+            } else if (messageType.equals("STRQ")) {
+
+            } else if (messageType.equals("EXEC")) {
+
+            }
+        }
+
+        JSONObject cepResponse = receiveMessageFromCEP();
+        if (cepResponse != null) {
+            String messageType = (String)cepResponse.get("cmd");
+
+            if (messageType.equals("message")) {
+                System.out.println((String)cepResponse.get("message"));
+            } else if (messageType.equals("heartbeat")) {
+                cepLastHeartbeatTime = (int)cepResponse.get("timestamp");
+            } else {
+                System.out.print("Received unknown command: ");
+                System.out.println(messageType);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
     private void sendInitialisationMessages() {
+        System.out.println("Sending initialisation messages");
+
+        // Send time initialisation message to CEP
+        JSONObject timeInit = new JSONObject();
+        timeInit.put("cmd", "time");
+        timeInit.put("timestamp", System.currentTimeMillis());
+        sendMessageToCEP(timeInit);
+        System.out.println("Sent Time initialisation message");
+
         // Send CCIN message to MCP
         JSONObject ccinMessage = new JSONObject();
         ccinMessage.put("client_type", clientType);
@@ -66,6 +106,8 @@ public class CCP {
         ccinMessage.put("client_id", clientID);
         ccinMessage.put("client_id", sequenceNumber);
         sendMessageToMCP(ccinMessage);
+        System.out.println("Sent CCIN message");
+        System.out.println("Awaiting MCP AKIN");
 
         // Wait for AKIN response
         while (!connected) {
@@ -90,12 +132,6 @@ public class CCP {
                 }
             }
         }
-
-        // Send time initialisation message to CEP
-        JSONObject timeInit = new JSONObject();
-        timeInit.put("cmd", "time");
-        timeInit.put("timestamp", System.currentTimeMillis());
-        sendMessageToCEP(timeInit);
     }
 
     private void sendMessage(DatagramChannel channel, SocketAddress ip, JSONObject message) throws Exception {
@@ -163,7 +199,7 @@ public class CCP {
                 // Handle sequence number error with resync mechanism
             }
 
-            lastHeartbeatTime = System.currentTimeMillis();
+            mcpLastHeartbeatTime = System.currentTimeMillis();
             return message;
         } catch (SocketTimeoutException e) {
             // Timeout, no message received
