@@ -119,11 +119,13 @@ namespace CEP {
       serializeJson(doc, output, CEP_MAX_PACKET_SIZE);
       sendPacket(String(output));
     }
+    // Time packets are treated as communication acknowledgements
     ErrorCode onTimeCommand(int32_t timestamp) {
       sendMessage("Received time command");
       timePacketReceivedTime = millis();
       timePacketTime = timestamp;
       ready = true;
+      return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onHeartbeatCommand(int32_t timestamp) {
       lastHeartbeatReceivedTime = timestamp;
