@@ -3,38 +3,61 @@
 #include <ArduinoJson.h>
 #include <WiFi.h>
 #include <WiFiUDP.h>
-
-#define CEP_MAX_PACKET_SIZE 512
-#define CEP_WIFI_TIMEOUT 5
-
-#define IR_SENSOR_PIN 3
-#define IR_SENSOR_LED_PIN 13
+#include "macros.hpp"
 
 namespace CEP {
   class CEP {
   private:
-    IPAddress local;
     WiFiUDP udp;
     IPAddress remoteIP;
     int remotePort;
-    uint32_t lastReceivedSpeedCommandTimestamp;
+
+    // system time the time packet was received, used to calculate true time
+    int32_t timePacketReceivedTime;
+    // the time the time packet gave us
+    int32_t timePacketTime;
+
+    int32_t lastHeartbeatReceivedTime;
+    int32_t lastHeartbeatSentTime;
+
+    // ready is defined as having a connection and receiving the time command
+    bool ready;
   public:
     CEP() {
-      lastReceivedSpeedCommandTimestamp = 0;
+      lastHeartbeatReceivedTime = 0;
+      lastHeartbeatReceivedTime = 0;
+      ready = false;
+    }
+    ErrorCode setup() {
+      pinMode(IR_SENSOR_PIN, INPUT);
 
       pinMode(IR_SENSOR_PIN, INPUT);
-    }
+      pinMode(IR_SENSOR_PIN, INPUT);
+      pinMode(IR_SENSOR_PIN, INPUT);
+      pinMode(IR_SENSOR_PIN, INPUT);
 
+      pinMode(G_LED_PIN, OUTPUT);
+      pinMode(Y_LED_PIN, OUTPUT);
+      pinMode(R_LED_PIN, OUTPUT);
+      pinMode(B_LED_PIN, OUTPUT);
+
+      pinMode(MOTOR_IN_1_PIN, OUTPUT);
+      pinMode(MOTOR_IN_2_PIN, OUTPUT);
+    }
     ErrorCode connect(const char* ssid, const IPAddress& rip, int rp) {
       remoteIP = rip;
       remotePort = rp;
 
       Serial.print("Connecting to ");
       Serial.println(ssid);
-      IPAddress ip = IPAddress(10, 20, 30, 110);
-      WiFi.config(ip);
+
+      if (!WiFi.config(CEP_IP)) {
+        Serial.println("Failed to configure Static IP");
+        return ErrorCode::CONFIG_FAILED;
+      }
+
       WiFi.begin(ssid);
-      udp.begin(3010);
+      udp.begin(CEP_PORT);
       uint32_t timeout = 0;
       while (WiFi.status() != WL_CONNECTED && timeout < CEP_WIFI_TIMEOUT) {
         delay(1000);
@@ -45,43 +68,104 @@ namespace CEP {
         Serial.print("Failed to connect in ");
         Serial.print(timeout);
         Serial.println(" seconds");
-        return ErrorCode::CONNECTION_FAILED;
+
+        // Enter infinite loop
+        while (true) {
+          onLedCommand(G_LED_PIN, true);
+          onLedCommand(Y_LED_PIN, true);
+          onLedCommand(R_LED_PIN, true);
+          onLedCommand(B_LED_PIN, true);
+          delay(500);
+          onLedCommand(G_LED_PIN, false);
+          onLedCommand(Y_LED_PIN, false);
+          onLedCommand(R_LED_PIN, false);
+          onLedCommand(B_LED_PIN, false);
+          delay(500);
+        }
       }
 
-      //local = WiFi.localIP();
       Serial.print("WiFi connected. Local IP:");
       Serial.println(WiFi.localIP());
-
+      
+      udp.begin(CEP_PORT);
       return ErrorCode::SUCCESSFUL;
     }
     void disconnect() {
       WiFi.disconnect();
     }
-    void onSpeedCommand(int32_t speed) {
-
+    void sendPacket(String data) {
+      udp.beginPacket(remoteIP, remotePort);
+      udp.print(data);
+      udp.endPacket();
     }
-    void onDoorCommand(bool state) {
+    void sendHeartbeat(int32_t currentTime) {
+      JsonDocument doc;
+      doc["cmd"] = "heartbeat";
+      doc["timestamp"] = currentTime;
+  
+      char output[CEP_MAX_PACKET_SIZE];
+      serializeJson(doc, output, CEP_MAX_PACKET_SIZE);
+      sendPacket(String(output));
 
+      lastHeartbeatSentTime = currentTime;
     }
-    void onLedCommand(int32_t pin, bool state) {
-      pinMode(pin, OUTPUT);
+    // Send a message to the CCP that will be displayed on debug output
+    void sendMessage(String message) {
+      JsonDocument doc;
+      doc["cmd"] = "message";
+      doc["message"] = message;
+
+      char output[CEP_MAX_PACKET_SIZE];
+      serializeJson(doc, output, CEP_MAX_PACKET_SIZE);
+      sendPacket(String(output));
+    }
+    // Time packets are treated as communication acknowledgements
+    ErrorCode onTimeCommand(int32_t timestamp) {
+      sendMessage("Received time command");
+      timePacketReceivedTime = millis();
+      timePacketTime = timestamp;
+      ready = true;
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onHeartbeatCommand(int32_t timestamp) {
+      lastHeartbeatReceivedTime = timestamp;
+    }
+    ErrorCode onSpeedCommand(int32_t speed) {
+      // https://www.pololu.com/product/4733
+      if (speed > 0) {
+        analogWrite(MOTOR_IN_1_PIN, 255);
+      } else {
+        analogWrite(MOTOR_IN_2_PIN, 255);
+      }
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onDoorCommand(bool state) {
+      return ErrorCode::NOT_IMPLEMENTED;
+    }
+    ErrorCode onLedCommand(int32_t pin, bool state) {
       digitalWrite(pin, state);
+      return ErrorCode::SUCCESSFUL;
     }
-    void onStopCommand() {
-      
+    ErrorCode onStopCommand() {
+      // refer to https://www.pololu.com/product/4733 for more info
+      analogWrite(MOTOR_IN_1_PIN, 0);
+      analogWrite(MOTOR_IN_2_PIN, 255);
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onShutdownCommand() {
+      sendMessage("Shutdown requested, goodbye for now");
+      onLedCommand(G_LED_PIN, false);
+      onLedCommand(Y_LED_PIN, false);
+      onLedCommand(R_LED_PIN, false);
+      onLedCommand(B_LED_PIN, false);
+      disconnect();
+      exit(0);
     }
     void processPackets() {
-      int packetSize = udp.parsePacket();
-      if (packetSize == 0) return;
-
-      Serial.print("packet of size ");
-      Serial.print(packetSize);
-      Serial.println(" was received");
-
       char packetBuffer[CEP_MAX_PACKET_SIZE];
       udp.read(packetBuffer, CEP_MAX_PACKET_SIZE);
 
-      StaticJsonDocument<200> doc;
+      JsonDocument doc;
       DeserializationError error = deserializeJson(doc, packetBuffer);
       
       if (error) {
@@ -90,50 +174,64 @@ namespace CEP {
         return;
       }
 
-      // Get command type
       String command = String(doc["cmd"]);
-      // Get command timestamp for speed packet drops
-      uint32_t timestamp = doc["timestamp"];
+      int32_t timestamp = doc["timestamp"];
 
-      // Drop old speed packets
-      
-      if (command == "SPEED" && timestamp > lastReceivedSpeedCommandTimestamp) {
-        lastReceivedSpeedCommandTimestamp = timestamp;
+      if (command == "time") {
+        onTimeCommand(timestamp);
+      } else if (command == "heartbeat") {
+        onHeartbeatCommand(doc["speed"]);
+      } else if (command == "speed") {
         onSpeedCommand(doc["speed"]);
-
-        Serial.print("Received SPEED command");
-      } else if (command == "DOOR") {
+      } else if (command == "door") {
         onDoorCommand(doc["state"]);
-
-        Serial.println("Received DOOR command");
-      } else if (command == "LED") {
+      } else if (command == "led") {
         onLedCommand(doc["pin"], doc["state"]);
-
-        Serial.println("Received LED command");
-      } else if (command == "STOP") {
+      } else if (command == "stop") {
         onStopCommand();
-
-        Serial.println("Received STOP command");
+      } else if (command == "shutdown") {
+        onShutdownCommand();
       } else {
         Serial.print("Received unknown command ");
         Serial.println(command);
       }
     }
-    void sendPacket(String data) {
-      udp.beginPacket(remoteIP, remotePort);
-      udp.print(data);
-      udp.endPacket();
+    // To be used for all time based methods
+    int32_t getCurrentTime() {
+      return timePacketReceivedTime + (millis() - timePacketTime);
+    }
+    void heartbeatTimeout() {
+        onStopCommand();
+        onLedCommand(G_LED_PIN, true);
+        onLedCommand(Y_LED_PIN, true);
+        onLedCommand(R_LED_PIN, true);
+        onLedCommand(B_LED_PIN, true);
+        exit(-1);
     }
     void update() {
-      sendPacket("Hello!");
+      int32_t currentTime = getCurrentTime();
 
-      // // Self-emergency stop
-      // somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
-      // if (somethingIsInFrontOfUs) {
-      //   onStopCommand();
-      // }
+      // Receive packets
+      while (udp.parsePacket() != 0) {
+        processPackets();
+      }
 
-      processPackets();
+      // Send heartbeats
+      if (ready && currentTime - lastHeartbeatSentTime > CEP_HEARTBEAT_DELAY) {
+        sendHeartbeat(currentTime);
+      }
+
+      // Wait for heartbeat timeout
+      if (ready && currentTime - lastHeartbeatReceivedTime > CEP_HEARTBEAT_TIMEOUT) {
+        heartbeatTimeout();
+      }
+
+      // Self-emergency stop
+      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
+      if (somethingIsInFrontOfUs) {
+        sendMessage("Object detected infront, self-avoidance protocol activated");
+        onStopCommand();
+      }
     }
   };
 }

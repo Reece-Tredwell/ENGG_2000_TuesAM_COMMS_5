@@ -1,18 +1,8 @@
 import org.json.simple.JSONObject;
-import java.nio.ByteBuffer;
-import java.util.Hashtable;
-import java.util.concurrent.*;
 
 public class CCPMainProcess{
-    CCPMainProcess MCP;
-    CCPMainProcess CEP;
-
 
     public CCPMainProcess(){
-        // this.MCPbuffers=MCPbuffers;
-        // this.CEPbuffers=CEPbuffers;
-        // this.MCPRef=MCPRef;
-        // this.CEPRef=CEPRef;
     }
 
     public JSONObject convertToCommand(JSONObject Data){
