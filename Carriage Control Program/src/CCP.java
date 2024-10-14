@@ -56,6 +56,7 @@ public class CCP {
 
         sendInitialisationMessages();
     }
+
     public void update() {
         JSONObject mcpResponse = receiveMessageFromMCP();
         if (mcpResponse != null) {
@@ -86,6 +87,8 @@ public class CCP {
             }
         }
     }
+
+    @SuppressWarnings("unchecked")
     private void sendInitialisationMessages() {
         System.out.println("Sending initialisation messages");
 
@@ -101,6 +104,7 @@ public class CCP {
         ccinMessage.put("client_type", clientType);
         ccinMessage.put("message", "CCIN");
         ccinMessage.put("client_id", clientID);
+        ccinMessage.put("client_id", sequenceNumber);
         sendMessageToMCP(ccinMessage);
         System.out.println("Sent CCIN message");
         System.out.println("Awaiting MCP AKIN");
@@ -109,9 +113,9 @@ public class CCP {
         while (!connected) {
             JSONObject response = receiveMessageFromMCP();
             if (response != null) {
-                String messageType = (String)response.get("message");
+                String messageType = (String) response.get("message");
                 if (messageType.equals("AKIN")) {
-                    sequenceNumber = (int)response.get("sequence_number");
+                    sequenceNumber = (int) response.get("sequence_number");
                     connected = true;
                     System.out.println("Connected to MCP. MCP Sequence Number: " + sequenceNumber);
                 } else {
@@ -124,11 +128,12 @@ public class CCP {
                 try {
                     Thread.sleep(200);
                 } catch (Exception e) {
-                    // don t  car e
+                    // dont care
                 }
             }
         }
     }
+
     private void sendMessage(DatagramChannel channel, SocketAddress ip, JSONObject message) throws Exception {
         String messageStr = message.toString();
         ByteBuffer sendBuffer = ByteBuffer.allocate(2048);
@@ -136,6 +141,7 @@ public class CCP {
         sendBuffer.flip();
         channel.send(sendBuffer, ip);
     }
+
     // MCP messages need sequence numbers, so they need a bit more fancy logic
     private void sendMessageToMCP(JSONObject message) {
         try {
@@ -147,6 +153,7 @@ public class CCP {
             e.printStackTrace();
         }
     }
+
     // Send a message to the CEP
     private void sendMessageToCEP(JSONObject message) {
         try {
@@ -155,6 +162,7 @@ public class CCP {
             e.printStackTrace();
         }
     }
+
     private JSONObject receiveMessage(DatagramChannel channel) throws Exception {
         ByteBuffer receiveBuffer = ByteBuffer.allocate(2048);
         SocketAddress sender = cepChannel.receive(receiveBuffer);
@@ -164,28 +172,30 @@ public class CCP {
             receiveBuffer.flip();
             byte[] receivedData = new byte[receiveBuffer.remaining()];
             receiveBuffer.get(receivedData);
-            message = (JSONObject)new JSONParser().parse(new String(receivedData));
+            message = (JSONObject) new JSONParser().parse(new String(receivedData));
             receiveBuffer.clear();
         }
 
         return message;
     }
+
     private JSONObject receiveMessageFromMCP() {
         try {
-           JSONObject message = receiveMessage(mcpChannel);
+            JSONObject message = receiveMessage(mcpChannel);
 
             if (message == null) {
                 return null;
             }
-            
+
             // Sequence number handling
-            int seqNum = (int)message.get("sequence_number");
+            int seqNum = (int) message.get("sequence_number");
             if (sequenceNumber == -1) {
                 sequenceNumber = seqNum;
             } else if (seqNum == sequenceNumber + 1) {
                 sequenceNumber = seqNum;
             } else {
-                System.out.println("Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
+                System.out.println(
+                        "Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
                 // Handle sequence number error with resync mechanism
             }
 
@@ -199,6 +209,7 @@ public class CCP {
             return null;
         }
     }
+
     private JSONObject receiveMessageFromCEP() {
         try {
             JSONObject message = receiveMessage(cepChannel);
