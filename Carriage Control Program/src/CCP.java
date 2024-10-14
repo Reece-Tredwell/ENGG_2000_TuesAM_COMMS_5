@@ -86,7 +86,7 @@ public class CCP {
                 try {
                     Thread.sleep(200);
                 } catch (Exception e) {
-                    // don t car e
+                    // dont care
                 }
             }
         }
