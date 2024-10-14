@@ -1,10 +1,7 @@
 import org.json.simple.JSONObject;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-
-
 
 public class MCP_COMMS{
     public JSONObject getDataFromMCP() throws IOException{

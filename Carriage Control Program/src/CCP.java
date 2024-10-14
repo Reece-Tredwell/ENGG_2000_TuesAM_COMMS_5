@@ -8,9 +8,14 @@ public class CCP{
     int carriagePort;
     MCP_COMMS MCP;
     CEP_COMMS CEP;
-
-
 public CCP(){
+    this.CEP = CEP;
+    this.MCP = MCP;
+    this.carriagePort = carriagePort;
+    this.carriageIP = carriageIP;
+    this.MCPPort = MCPPort;
+    this.mcpIP = mcpIP
+
 }
 public void execute(){
     /*/

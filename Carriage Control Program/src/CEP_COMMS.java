@@ -2,9 +2,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import org.json.simple.JSONObject;
-
 public class CEP_COMMS{
-
     JSONObject message;
     String ESPAdress;
     int port;
@@ -15,7 +13,6 @@ public class CEP_COMMS{
         this.ESPAdress = ESPAdress;
         this.port = port;
     }
-
     public void writeToESP32(boolean ACK) {
         while(running){
             try {
@@ -38,7 +35,6 @@ public class CEP_COMMS{
             }
         }
     }
-
     public void getFromESP32(){
         try{
             DatagramSocket socket = new DatagramSocket();
@@ -54,7 +50,6 @@ public class CEP_COMMS{
             e.printStackTrace();
         }
     }
-
     public void ACKESP32(){
         writeToESP32(true);
     }
