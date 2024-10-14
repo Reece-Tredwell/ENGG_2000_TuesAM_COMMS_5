@@ -57,7 +57,6 @@ namespace CEP {
       }
 
       WiFi.begin(ssid);
-      udp.begin(CEP_PORT);
       uint32_t timeout = 0;
       while (WiFi.status() != WL_CONNECTED && timeout < CEP_WIFI_TIMEOUT) {
         delay(1000);
@@ -86,6 +85,7 @@ namespace CEP {
 
       Serial.print("WiFi connected. Local IP:");
       Serial.println(WiFi.localIP());
+      sendMessage("CEP is alive and kicking!");
       
       udp.begin(CEP_PORT);
       return ErrorCode::SUCCESSFUL;
@@ -111,6 +111,8 @@ namespace CEP {
     }
     // Send a message to the CCP that will be displayed on debug output
     void sendMessage(String message) {
+      Serial.println(message);
+
       JsonDocument doc;
       doc["cmd"] = "message";
       doc["message"] = message;
@@ -125,6 +127,15 @@ namespace CEP {
       timePacketReceivedTime = millis();
       timePacketTime = timestamp;
       ready = true;
+
+      JsonDocument doc;
+      doc["cmd"] = "ack";
+      doc["timestamp"] = getCurrentTime();
+  
+      char output[CEP_MAX_PACKET_SIZE];
+      serializeJson(doc, output, CEP_MAX_PACKET_SIZE);
+      sendPacket(String(output));
+
       return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onHeartbeatCommand(int32_t timestamp) {
@@ -162,38 +173,41 @@ namespace CEP {
       exit(0);
     }
     void processPackets() {
-      char packetBuffer[CEP_MAX_PACKET_SIZE];
-      udp.read(packetBuffer, CEP_MAX_PACKET_SIZE);
+      while (udp.parsePacket() != 0) {
+        char packetBuffer[CEP_MAX_PACKET_SIZE];
+        udp.read(packetBuffer, CEP_MAX_PACKET_SIZE);
 
-      JsonDocument doc;
-      DeserializationError error = deserializeJson(doc, packetBuffer);
-      
-      if (error) {
-        Serial.print("Failed to parse JSON: ");
-        Serial.println(error.c_str());
-        return;
-      }
+        JsonDocument doc;
+        DeserializationError error = deserializeJson(doc, packetBuffer);
+        
+        if (error) {
+          return;
+        }
 
-      String command = String(doc["cmd"]);
-      int32_t timestamp = doc["timestamp"];
+        String command = String(doc["cmd"]);
+        int32_t timestamp = doc["timestamp"];
 
-      if (command == "time") {
-        onTimeCommand(timestamp);
-      } else if (command == "heartbeat") {
-        onHeartbeatCommand(doc["speed"]);
-      } else if (command == "speed") {
-        onSpeedCommand(doc["speed"]);
-      } else if (command == "door") {
-        onDoorCommand(doc["state"]);
-      } else if (command == "led") {
-        onLedCommand(doc["pin"], doc["state"]);
-      } else if (command == "stop") {
-        onStopCommand();
-      } else if (command == "shutdown") {
-        onShutdownCommand();
-      } else {
-        Serial.print("Received unknown command ");
+        Serial.print("Received command: ");
         Serial.println(command);
+
+        if (command == "time") {
+          onTimeCommand(timestamp);
+        } else if (command == "heartbeat") {
+          onHeartbeatCommand(doc["speed"]);
+        } else if (command == "speed") {
+          onSpeedCommand(doc["speed"]);
+        } else if (command == "door") {
+          onDoorCommand(doc["state"]);
+        } else if (command == "led") {
+          onLedCommand(doc["pin"], doc["state"]);
+        } else if (command == "stop") {
+          onStopCommand();
+        } else if (command == "shutdown") {
+          onShutdownCommand();
+        } else {
+          Serial.print("Received unknown command ");
+          Serial.println(command);
+        }
       }
     }
     // To be used for all time based methods
@@ -212,9 +226,7 @@ namespace CEP {
       int32_t currentTime = getCurrentTime();
 
       // Receive packets
-      while (udp.parsePacket() != 0) {
-        processPackets();
-      }
+      processPackets();
 
       // Send heartbeats
       if (ready && currentTime - lastHeartbeatSentTime > CEP_HEARTBEAT_DELAY) {
