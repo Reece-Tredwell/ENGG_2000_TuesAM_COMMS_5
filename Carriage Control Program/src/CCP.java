@@ -62,6 +62,8 @@ public class CCP {
         if (mcpResponse != null) {
             String messageType = (String)mcpResponse.get("message");
 
+            mcpLastHeartbeatTime = System.currentTimeMillis();
+
             if (messageType.equals("AKIN")) {
                 // Do nothing
             } else if (messageType.equals("AKST")) {
@@ -121,6 +123,15 @@ public class CCP {
                 System.out.print("Received unknown command: ");
                 System.out.println(messageType);
             }
+        }
+
+        // Assume we lost connection to CEP
+        if (cepLastHeartbeatTime != 0 && System.currentTimeMillis() - cepLastHeartbeatTime > 6000) {
+            System.out.println("Lost connection to the CEP");
+        }
+
+        if (mcpLastHeartbeatTime != 0 && System.currentTimeMillis() - mcpLastHeartbeatTime > 6000) {
+            System.out.println("Lost connection to the MCP");
         }
     }
     private void sendInitialisationMessages() {
