@@ -37,6 +37,8 @@ namespace CEP {
     // Actualised speed
     float motorSpeed;
 
+    int32_t boardingStartTime;
+
     // ready is defined as having a connection and receiving the time command
     bool ready;
   public:
@@ -45,6 +47,7 @@ namespace CEP {
       lastHeartbeatReceivedTime = 0;
       lastUpdateTime = 0;
       requestedSpeed = 0;
+      boardingStartTime = 0;
       motorSpeed = 0;
       ready = false;
     }
@@ -197,6 +200,11 @@ namespace CEP {
       disconnect();
       // 2hz as requested by MCP document
       notifyRemoval(500);
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onLocateCommand() {
+      state.approachStation();
+      actualisedSpeed = STATION_APPROACH_SPEED;
     }
     void processPackets() {
       while (udp.parsePacket() != 0) {
@@ -230,6 +238,8 @@ namespace CEP {
           onStopCommand();
         } else if (command == "shutdown") {
           onShutdownCommand();
+        } else if (command == "locate_station") {
+          onLocateCommand();
         } else {
           Serial.print("Received unknown command ");
           Serial.println(command);
@@ -275,6 +285,7 @@ namespace CEP {
         onStopCommand();
         sendMessage("Object detected infront, self-avoidance protocol activated");
         state.emergencyStop(currentTime);
+        actualisedSpeed = 0.0f;
       } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
         sendMessage("Object has left, resuming as normal");
         state.clearEmergency();
@@ -282,32 +293,65 @@ namespace CEP {
 
       // Apply speed changes
       if (state.getState() != CEPState::EMERGENCY_STOP) {
-        // Smooth accel, decel
+        // Smooth acceleration and deceleration
         float delta = requestedSpeed - actualisedSpeed;
-        // decelerate faster than we accelerate
-        float smoothing = (delta > 0) 0.5f : 1.0f;
-        // maximum change in acceleration that can be observed;
-        actualisedSpeed += min(delta * smoothing * deltaTime, MAX_ACCELERATION_CHANGE);
-        // https://www.pololu.com/product/4733
-        if (actualisedSpeed > 0.5f) {
-          analogWrite(MOTOR_IN_1_PIN, mapPWM((int)actualisedSpeed));
-          analogWrite(MOTOR_IN_2_PIN, mapPWM(0));
-        } else if (actualisedSpeed < -0.5f) {
-          analogWrite(MOTOR_IN_1_PIN, mapPWM(0));
-          analogWrite(MOTOR_IN_2_PIN, mapPWM((int)actualisedSpeed));
-        // We can pass between negative and positive and it should not cause a jerking brake motion
-        } else if (requestSpeed < -1.0f || requestSpeed > -1.0f) {
-          analogWrite(MOTOR_IN_1_PIN, mapPWM(50));
-          analogWrite(MOTOR_IN_2_PIN, mapPWM(100));
-          state.stopped();
+        // Decelerate faster than acceleration
+        float smoothing = (delta > 0) ? 0.5f : 1.0f;
+        // Limit the maximum change in acceleration
+        float acceleration = delta * smoothing * deltaTime;
+        acceleration = constrain(acceleration, -MAX_ACCELERATION_CHANGE, MAX_ACCELERATION_CHANGE);
+        actualisedSpeed += acceleration;
+        bool accelerating = (delta * actualisedSpeed >= 0);
+
+        // Handle motor control based on actualised speed
+        if (fabs(actualisedSpeed) > SPEED_THRESHOLD) {
+            if (actualisedSpeed > 0) {
+                // Forward motion
+                if (accelerating) {
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM((int)actualisedSpeed));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM(0));
+                } else {
+                  int brakePWM = MAX_PWM - (int)actualisedSpeed;
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM(MAX_PWM));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM(brakePWM));
+                }
+            } else {
+                // Reverse motion
+                if (accelerating) {
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM(0));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM((int)(-actualisedSpeed)));
+                } else {
+                    int brakePWM = MAX_PWM + (int)actualisedSpeed; // actualisedSpeed is negative
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM(brakePWM));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM(MAX_PWM));
+                }
+            }
+        } else {
+            // Keep a small braking force
+            analogWrite(MOTOR_IN_1_PIN, mapPWM(1));
+            analogWrite(MOTOR_IN_2_PIN, mapPWM(1));
+            state.stopped();
         }
       }
 
-      // Check for checkpoint or station beam breaks
-      int beamBreakIntensity = digitalRead(IR_PHOTORESISTOR_PIN);
-      // Arbitrary threshold, needs tweaking, choose appropiately between 0 and 1024
-      if (beamBreakIntensity > 450) {
-        state.approachStation();
+      // Station locating code
+      if (state.getState() == CEPState::APPROACHING_STATION) {
+        // We've already slowed down at this point
+        // Check for station IR LED
+        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN);
+        if (ledIntensity > IR_PHOTORESISTOR_SENSITIVITY) {
+          onStopCommand();
+          state.arriveAtStation();
+        }
+      }
+
+      if (state.getState() == CEPState::STATION_ARRIVAL) {
+        boardingStartTime = currentTime
+      }
+
+      // Boarding procedure
+      if (currentTIme - boardingStartTime > state.getState() == CEPState::BOARDING) {
+        
       }
     }
   };

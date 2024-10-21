@@ -23,6 +23,8 @@ public class CCP {
     private InetSocketAddress cepIP;
     private int cepPort;
 
+    private boolean connectedToMCP = false;
+    private boolean connectedToCEP = false;
 
     private int sequenceNumber;
 
