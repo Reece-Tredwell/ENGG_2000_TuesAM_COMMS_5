@@ -9,3 +9,6 @@ Go to this link "https://code.google.com/archive/p/json-simple/downloads" and en
 
 - Go to referenced libraries and click the plus, and select the file you just downloaded.
 
+## Required installations for Arduino
+- ArduinoJSON
+- ESP32Servo
