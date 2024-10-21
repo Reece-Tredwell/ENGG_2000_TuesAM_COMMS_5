@@ -6,6 +6,11 @@
 // In milliseconds, time between each heartbeat
 #define CEP_HEARTBEAT_DELAY 2000
 
+// maximum change in acceleration that can be observed;
+#define MAX_ACCELERATION_CHANGE 5.0f
+
+#define EMERGENCY_STOP_SENDOFF_TIME 5000
+
 // Pin locations for sensors
 #define IR_SENSOR_PIN 25
 #define SERVO_DATA_PIN 24

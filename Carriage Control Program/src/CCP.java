@@ -23,7 +23,6 @@ public class CCP {
     private InetSocketAddress cepIP;
     private int cepPort;
 
-    private boolean connected = false;
 
     private int sequenceNumber;
 
@@ -96,6 +95,19 @@ public class CCP {
         sendMessageToCEP(timeInit);
         System.out.println("Sent Time initialisation message");
 
+        while (!connectedToCEP) {
+            JSONObject response = receiveMessageFromCEP();
+            if (response != null) {
+                String messageType = (String)response.get("cmd");
+                if (messageType.equals("ack")) {
+                    connectedToCEP = true;
+                    System.out.println("Connected to CEP");
+                } else {
+                    System.out.println("Unexpected CEP message: " + response.toString());
+                }
+            }
+        }
+
         // Send CCIN message to MCP
         JSONObject ccinMessage = new JSONObject();
         ccinMessage.put("client_type", clientType);
@@ -106,23 +118,23 @@ public class CCP {
         System.out.println("Awaiting MCP AKIN");
 
         // Wait for AKIN response
-        while (!connected) {
+        while (!connectedToMCP) {
             JSONObject response = receiveMessageFromMCP();
             if (response != null) {
                 String messageType = (String)response.get("message");
                 if (messageType.equals("AKIN")) {
                     sequenceNumber = (int)response.get("sequence_number");
-                    connected = true;
+                    connectedToMCP = true;
                     System.out.println("Connected to MCP. MCP Sequence Number: " + sequenceNumber);
                 } else {
-                    System.out.println("Unexpected message: " + response.toString());
+                    System.out.println("Unexpected MCP message: " + response.toString());
                 }
             } else {
                 // Resend CCIN if no response
                 sendMessageToMCP(ccinMessage);
                 // Once every 200ms
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(20000);
                 } catch (Exception e) {
                     // don t  car e
                 }
@@ -135,6 +147,21 @@ public class CCP {
         sendBuffer.put(messageStr.getBytes());
         sendBuffer.flip();
         channel.send(sendBuffer, ip);
+    }
+    private JSONObject receiveMessage(DatagramChannel channel) throws Exception {
+        ByteBuffer receiveBuffer = ByteBuffer.allocate(2048);
+        SocketAddress sender = channel.receive(receiveBuffer);
+        JSONObject message = null;
+
+        if (sender != null) {
+            receiveBuffer.flip();
+            byte[] receivedData = new byte[receiveBuffer.remaining()];
+            receiveBuffer.get(receivedData);
+            message = (JSONObject)new JSONParser().parse(new String(receivedData));
+            receiveBuffer.clear();
+        }
+
+        return message;
     }
     // MCP messages need sequence numbers, so they need a bit more fancy logic
     private void sendMessageToMCP(JSONObject message) {
@@ -154,21 +181,6 @@ public class CCP {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-    private JSONObject receiveMessage(DatagramChannel channel) throws Exception {
-        ByteBuffer receiveBuffer = ByteBuffer.allocate(2048);
-        SocketAddress sender = cepChannel.receive(receiveBuffer);
-        JSONObject message = null;
-
-        if (sender != null) {
-            receiveBuffer.flip();
-            byte[] receivedData = new byte[receiveBuffer.remaining()];
-            receiveBuffer.get(receivedData);
-            message = (JSONObject)new JSONParser().parse(new String(receivedData));
-            receiveBuffer.clear();
-        }
-
-        return message;
     }
     private JSONObject receiveMessageFromMCP() {
         try {
