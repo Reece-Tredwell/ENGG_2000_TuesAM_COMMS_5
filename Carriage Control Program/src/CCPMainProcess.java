@@ -1,10 +1,8 @@
 import org.json.simple.JSONObject;
+
 public class CCPMainProcess{
-    CCPMainProcess MCP;
-    CCPMainProcess CEP;
+
     public CCPMainProcess(){
-        this.MCP=MCP;
-        this.CEP=CEP;
     }
     public JSONObject convertToCommand(JSONObject Data){
         //get the station
