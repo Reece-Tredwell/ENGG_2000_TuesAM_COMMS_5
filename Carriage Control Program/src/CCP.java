@@ -104,7 +104,7 @@ public class CCP {
         ccinMessage.put("client_type", clientType);
         ccinMessage.put("message", "CCIN");
         ccinMessage.put("client_id", clientID);
-        ccinMessage.put("client_id", sequenceNumber);
+        ccinMessage.put("sequence_number", sequenceNumber);
         sendMessageToMCP(ccinMessage);
         System.out.println("Sent CCIN message");
         System.out.println("Awaiting MCP AKIN");
