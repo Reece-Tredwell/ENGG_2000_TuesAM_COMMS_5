@@ -90,25 +90,25 @@ public class CCP {
     private void sendInitialisationMessages() {
         System.out.println("Sending initialisation messages");
 
-        // Send time initialisation message to CEP
-        JSONObject timeInit = new JSONObject();
-        timeInit.put("cmd", "time");
-        timeInit.put("timestamp", System.currentTimeMillis());
-        sendMessageToCEP(timeInit);
-        System.out.println("Sent Time initialisation message");
+        // // Send time initialisation message to CEP
+        // JSONObject timeInit = new JSONObject();
+        // timeInit.put("cmd", "time");
+        // timeInit.put("timestamp", System.currentTimeMillis());
+        // sendMessageToCEP(timeInit);
+        // System.out.println("Sent Time initialisation message");
 
-        while (!connectedToCEP) {
-            JSONObject response = receiveMessageFromCEP();
-            if (response != null) {
-                String messageType = (String)response.get("cmd");
-                if (messageType.equals("ack")) {
-                    connectedToCEP = true;
-                    System.out.println("Connected to CEP");
-                } else {
-                    System.out.println("Unexpected CEP message: " + response.toString());
-                }
-            }
-        }
+        // while (!connectedToCEP) {
+        //     JSONObject response = receiveMessageFromCEP();
+        //     if (response != null) {
+        //         String messageType = (String)response.get("cmd");
+        //         if (messageType.equals("ack")) {
+        //             connectedToCEP = true;
+        //             System.out.println("Connected to CEP");
+        //         } else {
+        //             System.out.println("Unexpected CEP message: " + response.toString());
+        //         }
+        //     }
+        // }
 
         // Send CCIN message to MCP
         JSONObject ccinMessage = new JSONObject();
@@ -125,7 +125,7 @@ public class CCP {
             if (response != null) {
                 String messageType = (String)response.get("message");
                 if (messageType.equals("AKIN")) {
-                    sequenceNumber = (int)response.get("sequence_number");
+                    // sequenceNumber = (int)response.get("sequence_number");
                     connectedToMCP = true;
                     System.out.println("Connected to MCP. MCP Sequence Number: " + sequenceNumber);
                 } else {
@@ -193,15 +193,15 @@ public class CCP {
             }
             
             // Sequence number handling
-            int seqNum = (int)message.get("sequence_number");
-            if (sequenceNumber == -1) {
-                sequenceNumber = seqNum;
-            } else if (seqNum == sequenceNumber + 1) {
-                sequenceNumber = seqNum;
-            } else {
-                System.out.println("Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
-                // Handle sequence number error with resync mechanism
-            }
+            // int seqNum = (int)message.get("sequence_number");
+            // if (sequenceNumber == -1) {
+            //     sequenceNumber = seqNum;
+            // } else if (seqNum == sequenceNumber + 1) {
+            //     sequenceNumber = seqNum;
+            // } else {
+            //     System.out.println("Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
+            //     // Handle sequence number error with resync mechanism
+            // }
 
             mcpLastHeartbeatTime = System.currentTimeMillis();
             return message;
