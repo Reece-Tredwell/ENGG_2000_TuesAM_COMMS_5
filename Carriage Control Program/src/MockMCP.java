@@ -122,4 +122,12 @@ public class MockMCP {
         }
 
     }
+    public void update() {
+        while(true){
+            System.out.println("Running update method");
+
+
+        }
+
+    }
 }
