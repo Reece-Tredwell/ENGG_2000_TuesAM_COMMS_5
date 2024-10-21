@@ -176,13 +176,18 @@ namespace CEP {
       requestedSpeed = (float)speed;
       return ErrorCode::SUCCESSFUL;
     }
-    ErrorCode onDoorCommand(bool state) {
-      if (state) {
+    ErrorCode onDoorCommand(bool doorState) {
+      // Assume open
+      if (doorState) {
+        if (state.getState() == CEPState::STATION_ARRIVAL) {
+          state.beginBoarding();
+        }
         myServo.write(180);
+      // Assume close
       } else {
         myServo.write(0);
       }
-      return ErrorCode::NOT_IMPLEMENTED;
+      return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onLedCommand(int32_t pin, bool state) {
       digitalWrite(pin, state);
@@ -205,6 +210,12 @@ namespace CEP {
     ErrorCode onLocateCommand() {
       state.approachStation();
       actualisedSpeed = STATION_APPROACH_SPEED;
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onOvershotCommand() {
+      state.overshotStation();
+      actualisedSpeed = STATION_OVERSHOOT_REVERSE_SPEED;
+      return ErrorCode::SUCCESSFUL;
     }
     void processPackets() {
       while (udp.parsePacket() != 0) {
@@ -240,6 +251,8 @@ namespace CEP {
           onShutdownCommand();
         } else if (command == "locate_station") {
           onLocateCommand();
+        } else if (command == "overshot_station") {
+          onOvershotCommand();
         } else {
           Serial.print("Received unknown command ");
           Serial.println(command);
@@ -305,6 +318,7 @@ namespace CEP {
 
         // Handle motor control based on actualised speed
         if (fabs(actualisedSpeed) > SPEED_THRESHOLD) {
+          state.beginMoving();
             if (actualisedSpeed > 0) {
                 // Forward motion
                 if (accelerating) {
@@ -344,14 +358,25 @@ namespace CEP {
           state.arriveAtStation();
         }
       }
+      
+      if (state.getState() == CEPState::OVERSHOT_STATION) {
+        sendMessage("FUCK me, I overshot the station");
+      }
 
       if (state.getState() == CEPState::STATION_ARRIVAL) {
-        boardingStartTime = currentTime
+        boardingStartTime = currentTime;
+        sendMessage("Arrived at station, waiting for boarding commands");
       }
 
       // Boarding procedure
-      if (currentTIme - boardingStartTime > state.getState() == CEPState::BOARDING) {
-        
+      if (state.getState() == CEPState::BOARDING) {
+        // Doors should be open by this point
+      }
+
+      if (state.getState() == CEPState::STATION_DEPARTURE) {
+        // Doors should be closed
+        sendMessage("Lets get out of here mfs");
+        state.proceedAfterDeparture();
       }
     }
   };

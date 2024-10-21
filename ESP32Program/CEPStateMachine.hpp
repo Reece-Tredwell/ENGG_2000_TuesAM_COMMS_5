@@ -90,7 +90,7 @@ namespace CEP {
       }
       void proceedAfterDeparture() {
         if (state == CEPState::STATION_DEPARTURE)
-          state = CEPState::MOVING;
+          state = CEPState::STOPPED;
       }
       void networkDisconnected() {
         state = CEPState::NETWORK_DISCONNECTED;

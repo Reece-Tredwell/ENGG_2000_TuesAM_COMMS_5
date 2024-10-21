@@ -69,7 +69,43 @@ public class CCP {
             } else if (messageType.equals("STRQ")) {
 
             } else if (messageType.equals("EXEC")) {
-
+                String actionType = (String)mcpResponse.get("actions");
+                // Door open is 1, door close is 0
+                if (actionType == "STOPC") {
+                    JSONObject closeCommand = new JSONObject();
+                    closeCommand.put("cmd", "door");
+                    // doesn't even fucking matter, why did I implement this field
+                    closeCommand.put("timestamp", System.currentTimeMillis());
+                    closeCommand.put("state", 0);
+                    sendMessageToCEP(closeCommand);
+                } else if (actionType == "STOPO") {
+                    JSONObject openCommand = new JSONObject();
+                    openCommand.put("cmd", "door");
+                    // doesn't even fucking matter, why did I implement this field
+                    openCommand.put("timestamp", System.currentTimeMillis());
+                    openCommand.put("state", 1);
+                    sendMessageToCEP(openCommand);
+                } else if (actionType == "FSLOWC") {
+                   JSONObject locatingCommand = new JSONObject();
+                   locatingCommand.put("cmd", "locate_station");
+                   sendMessageToCEP(locatingCommand); 
+                } else if (actionType == "FFASTC") {
+                    JSONObject fullSpeedAhead = new JSONObject();
+                    fullSpeedAhead.put("cmd", "speed");
+                    fullSpeedAhead.put("timestamp", System.currentTimeMillis());
+                    fullSpeedAhead.put("speed", 100);
+                    sendMessageToCEP(fullSpeedAhead);
+                } else if (actionType == "RSLOWC") {
+                    JSONObject reverseIntoStation = new JSONObject();
+                    reverseIntoStation.put("cmd", "locate_station");
+                   sendMessageToCEP(reverseIntoStation);
+                } else if (actionType == "DISCONNECT") {
+                    JSONObject shutdown = new JSONObject();
+                    shutdown.put("cmd", "shutdown");
+                    sendMessageToCEP(shutdown);
+                } else {
+                    System.out.println("Invalid actionType");
+                }
             }
         }
 
@@ -136,7 +172,7 @@ public class CCP {
                 sendMessageToMCP(ccinMessage);
                 // Once every 200ms
                 try {
-                    Thread.sleep(20000);
+                    Thread.sleep(2000);
                 } catch (Exception e) {
                     // don t  car e
                 }

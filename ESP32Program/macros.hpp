@@ -16,9 +16,11 @@
 // Percentage of motor power to approach the station
 // Note that the maximum speed of the blade runner is about 300mm/s
 #define STATION_APPROACH_SPEED 10
+// Speed to reverse at if we overshoot the station
+#define STATION_OVERSHOOT_REVERSE_SPEED -5
 
 // value between 0 and 1024, where 0 is always pass, 1024 is maximum intensity to pass
-#define IR_PHOTORESISTOR_SENSITIVITY 512
+#define IR_PHOTORESISTOR_SENSITIVITY 128
 
 // Time to wait for boarding, in milliseconds
 #define BOARDING_TIME 10000
