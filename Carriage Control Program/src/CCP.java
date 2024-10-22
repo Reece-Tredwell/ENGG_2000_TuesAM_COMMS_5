@@ -23,7 +23,8 @@ public class CCP {
     private InetSocketAddress cepIP;
     private int cepPort;
 
-    private boolean connected = false;
+    private boolean connectedToMCP = false;
+    private boolean connectedToCEP = false;
 
     private int sequenceNumber;
 
@@ -62,6 +63,8 @@ public class CCP {
         if (mcpResponse != null) {
             String messageType = (String)mcpResponse.get("message");
 
+            mcpLastHeartbeatTime = System.currentTimeMillis();
+
             if (messageType.equals("AKIN")) {
                 // Do nothing
             } else if (messageType.equals("AKST")) {
@@ -69,7 +72,44 @@ public class CCP {
             } else if (messageType.equals("STRQ")) {
 
             } else if (messageType.equals("EXEC")) {
-
+                String actionType = (String)mcpResponse.get("action");
+                // Door open is 1, door close is 0
+                if (actionType.equals("STOPC")) {
+                    JSONObject closeCommand = new JSONObject();
+                    closeCommand.put("cmd", "door");
+                    // doesn't even fucking matter, why did I implement this field
+                    closeCommand.put("timestamp", System.currentTimeMillis());
+                    closeCommand.put("state", 0);
+                    sendMessageToCEP(closeCommand);
+                } else if (actionType.equals("STOPO")) {
+                    JSONObject openCommand = new JSONObject();
+                    openCommand.put("cmd", "door");
+                    // doesn't even fucking matter, why did I implement this field
+                    openCommand.put("timestamp", System.currentTimeMillis());
+                    openCommand.put("state", 1);
+                    sendMessageToCEP(openCommand);
+                } else if (actionType.equals("FSLOWC")) {
+                   JSONObject locatingCommand = new JSONObject();
+                   locatingCommand.put("cmd", "locate_station");
+                   sendMessageToCEP(locatingCommand); 
+                } else if (actionType.equals("FFASTC")) {
+                    JSONObject fullSpeedAhead = new JSONObject();
+                    fullSpeedAhead.put("cmd", "speed");
+                    fullSpeedAhead.put("timestamp", System.currentTimeMillis());
+                    fullSpeedAhead.put("speed", 100);
+                    sendMessageToCEP(fullSpeedAhead);
+                } else if (actionType.equals("RSLOWC")) {
+                    JSONObject reverseIntoStation = new JSONObject();
+                    reverseIntoStation.put("cmd", "locate_station");
+                   sendMessageToCEP(reverseIntoStation);
+                } else if (actionType.equals("DISCONNECT")) {
+                    JSONObject shutdown = new JSONObject();
+                    shutdown.put("cmd", "shutdown");
+                    sendMessageToCEP(shutdown);
+                } else {
+                    System.out.print("Invalid actionType: ");
+                    System.out.println(actionType);
+                }
             }
         }
 
@@ -86,9 +126,16 @@ public class CCP {
                 System.out.println(messageType);
             }
         }
-    }
 
-    @SuppressWarnings("unchecked")
+        // Assume we lost connection to CEP
+        if (cepLastHeartbeatTime != 0 && System.currentTimeMillis() - cepLastHeartbeatTime > 6000) {
+            System.out.println("Lost connection to the CEP");
+        }
+
+        if (mcpLastHeartbeatTime != 0 && System.currentTimeMillis() - mcpLastHeartbeatTime > 6000) {
+            System.out.println("Lost connection to the MCP");
+        }
+    }
     private void sendInitialisationMessages() {
         System.out.println("Sending initialisation messages");
 
@@ -98,6 +145,19 @@ public class CCP {
         timeInit.put("timestamp", System.currentTimeMillis());
         sendMessageToCEP(timeInit);
         System.out.println("Sent Time initialisation message");
+
+        while (!connectedToCEP) {
+            JSONObject response = receiveMessageFromCEP();
+            if (response != null) {
+                String messageType = (String)response.get("cmd");
+                if (messageType.equals("ack")) {
+                    connectedToCEP = true;
+                    System.out.println("Connected to CEP");
+                } else {
+                    System.out.println("Unexpected CEP message: " + response.toString());
+                }
+            }
+        }
 
         // Send CCIN message to MCP
         JSONObject ccinMessage = new JSONObject();
@@ -110,23 +170,23 @@ public class CCP {
         System.out.println("Awaiting MCP AKIN");
 
         // Wait for AKIN response
-        while (!connected) {
+        while (!connectedToMCP) {
             JSONObject response = receiveMessageFromMCP();
             if (response != null) {
                 String messageType = (String) response.get("message");
                 if (messageType.equals("AKIN")) {
-                    sequenceNumber = (int) response.get("sequence_number");
-                    connected = true;
+                    sequenceNumber = (int)response.get("sequence_number");
+                    connectedToMCP = true;
                     System.out.println("Connected to MCP. MCP Sequence Number: " + sequenceNumber);
                 } else {
-                    System.out.println("Unexpected message: " + response.toString());
+                    System.out.println("Unexpected MCP message: " + response.toString());
                 }
             } else {
                 // Resend CCIN if no response
                 sendMessageToMCP(ccinMessage);
                 // Once every 200ms
                 try {
-                    Thread.sleep(200);
+                    Thread.sleep(2000);
                 } catch (Exception e) {
                     // dont care
                 }
@@ -141,7 +201,21 @@ public class CCP {
         sendBuffer.flip();
         channel.send(sendBuffer, ip);
     }
+    private JSONObject receiveMessage(DatagramChannel channel) throws Exception {
+        ByteBuffer receiveBuffer = ByteBuffer.allocate(2048);
+        SocketAddress sender = channel.receive(receiveBuffer);
+        JSONObject message = null;
 
+        if (sender != null) {
+            receiveBuffer.flip();
+            byte[] receivedData = new byte[receiveBuffer.remaining()];
+            receiveBuffer.get(receivedData);
+            message = (JSONObject)new JSONParser().parse(new String(receivedData));
+            receiveBuffer.clear();
+        }
+
+        return message;
+    }
     // MCP messages need sequence numbers, so they need a bit more fancy logic
     private void sendMessageToMCP(JSONObject message) {
         try {
@@ -162,23 +236,6 @@ public class CCP {
             e.printStackTrace();
         }
     }
-
-    private JSONObject receiveMessage(DatagramChannel channel) throws Exception {
-        ByteBuffer receiveBuffer = ByteBuffer.allocate(2048);
-        SocketAddress sender = cepChannel.receive(receiveBuffer);
-        JSONObject message = null;
-
-        if (sender != null) {
-            receiveBuffer.flip();
-            byte[] receivedData = new byte[receiveBuffer.remaining()];
-            receiveBuffer.get(receivedData);
-            message = (JSONObject) new JSONParser().parse(new String(receivedData));
-            receiveBuffer.clear();
-        }
-
-        return message;
-    }
-
     private JSONObject receiveMessageFromMCP() {
         try {
             JSONObject message = receiveMessage(mcpChannel);

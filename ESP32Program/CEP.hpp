@@ -1,13 +1,23 @@
 #pragma once
 #include "ErrorCode.hpp"
 #include <ArduinoJson.h>
+#include <Servo.h>
 #include <WiFi.h>
 #include <WiFiUDP.h>
 #include "macros.hpp"
+#include "CEPStateMachine.hpp"
+
+// Maps from 0 - 100 to 0 - 255 as per pwm
+int mapPWM(int val) {
+  return (int)((float)val * 2.55f);
+}
 
 namespace CEP {
   class CEP {
   private:
+    Servo doorServo;
+    CEPStateMachine state;
+
     WiFiUDP udp;
     IPAddress remoteIP;
     int remotePort;
@@ -16,9 +26,18 @@ namespace CEP {
     int32_t timePacketReceivedTime;
     // the time the time packet gave us
     int32_t timePacketTime;
+    // used for deltaTime
+    int32_t lastUpdateTime;
 
     int32_t lastHeartbeatReceivedTime;
     int32_t lastHeartbeatSentTime;
+
+    // Speed we need to build up to
+    float requestedSpeed;
+    // Actualised speed
+    float motorSpeed;
+
+    int32_t boardingStartTime;
 
     // ready is defined as having a connection and receiving the time command
     bool ready;
@@ -26,6 +45,10 @@ namespace CEP {
     CEP() {
       lastHeartbeatReceivedTime = 0;
       lastHeartbeatReceivedTime = 0;
+      lastUpdateTime = 0;
+      requestedSpeed = 0;
+      boardingStartTime = 0;
+      motorSpeed = 0;
       ready = false;
     }
     ErrorCode setup() {
@@ -43,6 +66,8 @@ namespace CEP {
 
       pinMode(MOTOR_IN_1_PIN, OUTPUT);
       pinMode(MOTOR_IN_2_PIN, OUTPUT);
+
+      doorServo.attach(SERVO_DATA_PIN);
     }
     ErrorCode connect(const char* ssid, const IPAddress& rip, int rp) {
       remoteIP = rip;
@@ -67,20 +92,7 @@ namespace CEP {
         Serial.print("Failed to connect in ");
         Serial.print(timeout);
         Serial.println(" seconds");
-
-        // Enter infinite loop
-        while (true) {
-          onLedCommand(G_LED_PIN, true);
-          onLedCommand(Y_LED_PIN, true);
-          onLedCommand(R_LED_PIN, true);
-          onLedCommand(B_LED_PIN, true);
-          delay(500);
-          onLedCommand(G_LED_PIN, false);
-          onLedCommand(Y_LED_PIN, false);
-          onLedCommand(R_LED_PIN, false);
-          onLedCommand(B_LED_PIN, false);
-          delay(500);
-        }
+        notifyRemoval(250);
       }
 
       Serial.print("WiFi connected. Local IP:");
@@ -90,8 +102,24 @@ namespace CEP {
       udp.begin(CEP_PORT);
       return ErrorCode::SUCCESSFUL;
     }
+    void notifyRemoval(int blinkSpeed) {
+      state.networkDisconnected();
+      while (true) {
+          onLedCommand(G_LED_PIN, true);
+          onLedCommand(Y_LED_PIN, true);
+          onLedCommand(R_LED_PIN, true);
+          onLedCommand(B_LED_PIN, true);
+          delay(blinkSpeed);
+          onLedCommand(G_LED_PIN, false);
+          onLedCommand(Y_LED_PIN, false);
+          onLedCommand(R_LED_PIN, false);
+          onLedCommand(B_LED_PIN, false);
+          delay(blinkSpeed);
+        }
+    }
     void disconnect() {
       WiFi.disconnect();
+      state.networkDisconnected();
     }
     void sendPacket(String data) {
       udp.beginPacket(remoteIP, remotePort);
@@ -108,6 +136,8 @@ namespace CEP {
       sendPacket(String(output));
 
       lastHeartbeatSentTime = currentTime;
+
+      Serial.println("Sent Heartbeat");
     }
     // Send a message to the CCP that will be displayed on debug output
     void sendMessage(String message) {
@@ -123,10 +153,11 @@ namespace CEP {
     }
     // Time packets are treated as communication acknowledgements
     ErrorCode onTimeCommand(int32_t timestamp) {
-      sendMessage("Received time command");
       timePacketReceivedTime = millis();
       timePacketTime = timestamp;
+      lastUpdateTime = getCurrentTime();
       ready = true;
+      state.initialisationFinished();
 
       JsonDocument doc;
       doc["cmd"] = "ack";
@@ -142,16 +173,21 @@ namespace CEP {
       lastHeartbeatReceivedTime = timestamp;
     }
     ErrorCode onSpeedCommand(int32_t speed) {
-      // https://www.pololu.com/product/4733
-      if (speed > 0) {
-        analogWrite(MOTOR_IN_1_PIN, 255);
-      } else {
-        analogWrite(MOTOR_IN_2_PIN, 255);
-      }
+      requestedSpeed = (float)speed;
       return ErrorCode::SUCCESSFUL;
     }
-    ErrorCode onDoorCommand(bool state) {
-      return ErrorCode::NOT_IMPLEMENTED;
+    ErrorCode onDoorCommand(bool doorState) {
+      // Assume open
+      if (doorState) {
+        if (state.getState() == CEPState::STATION_ARRIVAL) {
+          state.beginBoarding();
+        }
+        myServo.write(180);
+      // Assume close
+      } else {
+        myServo.write(0);
+      }
+      return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onLedCommand(int32_t pin, bool state) {
       digitalWrite(pin, state);
@@ -159,18 +195,27 @@ namespace CEP {
     }
     ErrorCode onStopCommand() {
       // refer to https://www.pololu.com/product/4733 for more info
+      // Brake as fast as possible, maybe we need to tweak this for ABS sake
       analogWrite(MOTOR_IN_1_PIN, 0);
       analogWrite(MOTOR_IN_2_PIN, 255);
       return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onShutdownCommand() {
       sendMessage("Shutdown requested, goodbye for now");
-      onLedCommand(G_LED_PIN, false);
-      onLedCommand(Y_LED_PIN, false);
-      onLedCommand(R_LED_PIN, false);
-      onLedCommand(B_LED_PIN, false);
       disconnect();
-      exit(0);
+      // 2hz as requested by MCP document
+      notifyRemoval(500);
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onLocateCommand() {
+      state.approachStation();
+      actualisedSpeed = STATION_APPROACH_SPEED;
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onOvershotCommand() {
+      state.overshotStation();
+      actualisedSpeed = STATION_OVERSHOOT_REVERSE_SPEED;
+      return ErrorCode::SUCCESSFUL;
     }
     void processPackets() {
       while (udp.parsePacket() != 0) {
@@ -204,6 +249,10 @@ namespace CEP {
           onStopCommand();
         } else if (command == "shutdown") {
           onShutdownCommand();
+        } else if (command == "locate_station") {
+          onLocateCommand();
+        } else if (command == "overshot_station") {
+          onOvershotCommand();
         } else {
           Serial.print("Received unknown command ");
           Serial.println(command);
@@ -223,7 +272,12 @@ namespace CEP {
         exit(-1);
     }
     void update() {
+      // Cause of the nature of the delay function, it does not gauranteed this runs at 1000 ups
+      delay(1);
+      lastUpdateTime = currentTime;
       int32_t currentTime = getCurrentTime();
+      // time variables are in milliseconds but delta time is best in seconds
+      float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
 
       // Receive packets
       processPackets();
@@ -241,8 +295,88 @@ namespace CEP {
       // Self-emergency stop
       bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
       if (somethingIsInFrontOfUs) {
-        sendMessage("Object detected infront, self-avoidance protocol activated");
         onStopCommand();
+        sendMessage("Object detected infront, self-avoidance protocol activated");
+        state.emergencyStop(currentTime);
+        actualisedSpeed = 0.0f;
+      } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
+        sendMessage("Object has left, resuming as normal");
+        state.clearEmergency();
+      }
+
+      // Apply speed changes
+      if (state.getState() != CEPState::EMERGENCY_STOP) {
+        // Smooth acceleration and deceleration
+        float delta = requestedSpeed - actualisedSpeed;
+        // Decelerate faster than acceleration
+        float smoothing = (delta > 0) ? 0.5f : 1.0f;
+        // Limit the maximum change in acceleration
+        float acceleration = delta * smoothing * deltaTime;
+        acceleration = constrain(acceleration, -MAX_ACCELERATION_CHANGE, MAX_ACCELERATION_CHANGE);
+        actualisedSpeed += acceleration;
+        bool accelerating = (delta * actualisedSpeed >= 0);
+
+        // Handle motor control based on actualised speed
+        if (fabs(actualisedSpeed) > SPEED_THRESHOLD) {
+          state.beginMoving();
+            if (actualisedSpeed > 0) {
+                // Forward motion
+                if (accelerating) {
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM((int)actualisedSpeed));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM(0));
+                } else {
+                  int brakePWM = MAX_PWM - (int)actualisedSpeed;
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM(MAX_PWM));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM(brakePWM));
+                }
+            } else {
+                // Reverse motion
+                if (accelerating) {
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM(0));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM((int)(-actualisedSpeed)));
+                } else {
+                    int brakePWM = MAX_PWM + (int)actualisedSpeed; // actualisedSpeed is negative
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM(brakePWM));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM(MAX_PWM));
+                }
+            }
+        } else {
+            // Keep a small braking force
+            analogWrite(MOTOR_IN_1_PIN, mapPWM(1));
+            analogWrite(MOTOR_IN_2_PIN, mapPWM(1));
+            state.stopped();
+        }
+      }
+
+      // Station locating code
+      if (state.getState() == CEPState::APPROACHING_STATION) {
+        // We've already slowed down at this point
+        // Check for station IR LED
+        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN);
+        if (ledIntensity > IR_PHOTORESISTOR_SENSITIVITY) {
+          onStopCommand();
+          state.arriveAtStation();
+        }
+      }
+      
+      if (state.getState() == CEPState::OVERSHOT_STATION) {
+        sendMessage("FUCK me, I overshot the station");
+      }
+
+      if (state.getState() == CEPState::STATION_ARRIVAL) {
+        boardingStartTime = currentTime;
+        sendMessage("Arrived at station, waiting for boarding commands");
+      }
+
+      // Boarding procedure
+      if (state.getState() == CEPState::BOARDING) {
+        // Doors should be open by this point
+      }
+
+      if (state.getState() == CEPState::STATION_DEPARTURE) {
+        // Doors should be closed
+        sendMessage("Lets get out of here mfs");
+        state.proceedAfterDeparture();
       }
     }
   };
