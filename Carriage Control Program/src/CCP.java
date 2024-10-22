@@ -62,6 +62,8 @@ public class CCP {
         if (mcpResponse != null) {
             String messageType = (String)mcpResponse.get("message");
 
+            mcpLastHeartbeatTime = System.currentTimeMillis();
+
             if (messageType.equals("AKIN")) {
                 // Do nothing
             } else if (messageType.equals("AKST")) {
@@ -69,42 +71,43 @@ public class CCP {
             } else if (messageType.equals("STRQ")) {
 
             } else if (messageType.equals("EXEC")) {
-                String actionType = (String)mcpResponse.get("actions");
+                String actionType = (String)mcpResponse.get("action");
                 // Door open is 1, door close is 0
-                if (actionType == "STOPC") {
+                if (actionType.equals("STOPC")) {
                     JSONObject closeCommand = new JSONObject();
                     closeCommand.put("cmd", "door");
                     // doesn't even fucking matter, why did I implement this field
                     closeCommand.put("timestamp", System.currentTimeMillis());
                     closeCommand.put("state", 0);
                     sendMessageToCEP(closeCommand);
-                } else if (actionType == "STOPO") {
+                } else if (actionType.equals("STOPO")) {
                     JSONObject openCommand = new JSONObject();
                     openCommand.put("cmd", "door");
                     // doesn't even fucking matter, why did I implement this field
                     openCommand.put("timestamp", System.currentTimeMillis());
                     openCommand.put("state", 1);
                     sendMessageToCEP(openCommand);
-                } else if (actionType == "FSLOWC") {
+                } else if (actionType.equals("FSLOWC")) {
                    JSONObject locatingCommand = new JSONObject();
                    locatingCommand.put("cmd", "locate_station");
                    sendMessageToCEP(locatingCommand); 
-                } else if (actionType == "FFASTC") {
+                } else if (actionType.equals("FFASTC")) {
                     JSONObject fullSpeedAhead = new JSONObject();
                     fullSpeedAhead.put("cmd", "speed");
                     fullSpeedAhead.put("timestamp", System.currentTimeMillis());
                     fullSpeedAhead.put("speed", 100);
                     sendMessageToCEP(fullSpeedAhead);
-                } else if (actionType == "RSLOWC") {
+                } else if (actionType.equals("RSLOWC")) {
                     JSONObject reverseIntoStation = new JSONObject();
                     reverseIntoStation.put("cmd", "locate_station");
                    sendMessageToCEP(reverseIntoStation);
-                } else if (actionType == "DISCONNECT") {
+                } else if (actionType.equals("DISCONNECT")) {
                     JSONObject shutdown = new JSONObject();
                     shutdown.put("cmd", "shutdown");
                     sendMessageToCEP(shutdown);
                 } else {
-                    System.out.println("Invalid actionType");
+                    System.out.print("Invalid actionType: ");
+                    System.out.println(actionType);
                 }
             }
         }
@@ -121,6 +124,15 @@ public class CCP {
                 System.out.print("Received unknown command: ");
                 System.out.println(messageType);
             }
+        }
+
+        // Assume we lost connection to CEP
+        if (cepLastHeartbeatTime != 0 && System.currentTimeMillis() - cepLastHeartbeatTime > 6000) {
+            System.out.println("Lost connection to the CEP");
+        }
+
+        if (mcpLastHeartbeatTime != 0 && System.currentTimeMillis() - mcpLastHeartbeatTime > 6000) {
+            System.out.println("Lost connection to the MCP");
         }
     }
     private void sendInitialisationMessages() {
