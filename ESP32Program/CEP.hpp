@@ -35,9 +35,13 @@ namespace CEP {
     // Speed we need to build up to
     float requestedSpeed;
     // Actualised speed
+    float actualisedSpeed;
     float motorSpeed;
-
+    float SPEED_THRESHOLD;
+    float duration_us; 
+    float distance_cm;
     int32_t boardingStartTime;
+    int32_t MAX_PWM;
 
     // ready is defined as having a connection and receiving the time command
     bool ready;
@@ -66,6 +70,9 @@ namespace CEP {
 
       pinMode(MOTOR_IN_1_PIN, OUTPUT);
       pinMode(MOTOR_IN_2_PIN, OUTPUT);
+
+      pinMode(TRIG_PIN, OUTPUT);
+      pinMode(ECHO_PIN, INPUT);
 
       doorServo.setPeriodHertz(50);
       doorServo.attach(SERVO_DATA_PIN, 500, 2400);
@@ -183,10 +190,10 @@ namespace CEP {
         if (state.getState() == CEPState::STATION_ARRIVAL) {
           state.beginBoarding();
         }
-        myServo.write(180);
+        doorServo.write(180); //myServo.write(180);
       // Assume close
       } else {
-        myServo.write(0);
+        doorServo.write(0); //myServo.write(0);
       }
       return ErrorCode::SUCCESSFUL;
     }
@@ -275,8 +282,9 @@ namespace CEP {
     void update() {
       // Cause of the nature of the delay function, it does not gauranteed this runs at 1000 ups
       delay(1);
-      lastUpdateTime = currentTime;
       int32_t currentTime = getCurrentTime();
+      lastUpdateTime = currentTime;
+      //int32_t currentTime = getCurrentTime();
       // time variables are in milliseconds but delta time is best in seconds
       float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
 
@@ -294,7 +302,7 @@ namespace CEP {
       }
 
       // Self-emergency stop
-      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
+      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN); //LOOK HERE ANAS
       if (somethingIsInFrontOfUs) {
         onStopCommand();
         sendMessage("Object detected infront, self-avoidance protocol activated");
@@ -353,7 +361,7 @@ namespace CEP {
       if (state.getState() == CEPState::APPROACHING_STATION) {
         // We've already slowed down at this point
         // Check for station IR LED
-        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN);
+        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN); //LOOK HERE ANAS
         if (ledIntensity > IR_PHOTORESISTOR_SENSITIVITY) {
           onStopCommand();
           state.arriveAtStation();

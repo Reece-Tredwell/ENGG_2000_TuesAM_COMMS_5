@@ -22,13 +22,17 @@
 // value between 0 and 1024, where 0 is always pass, 1024 is maximum intensity to pass
 #define IR_PHOTORESISTOR_SENSITIVITY 128
 
+#define SENSOR_DISTANCE 588
+
 // Time to wait for boarding, in milliseconds
 #define BOARDING_TIME 10000
 
 // Pin locations for sensors
+#define IR_PHOTORESISTOR_PIN 23
 #define IR_SENSOR_PIN 25
 #define SERVO_DATA_PIN 24
-#define IR_PHOTORESISTOR_PIN 26
+#define TRIG_PIN 16 
+#define ECHO_PIN 17
 #define G_LED_PIN 11
 #define Y_LED_PIN 12
 #define R_LED_PIN 13
