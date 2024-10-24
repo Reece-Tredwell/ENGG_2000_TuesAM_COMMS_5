@@ -38,7 +38,8 @@ namespace CEP {
     float actualisedSpeed;
     float motorSpeed;
     float SPEED_THRESHOLD;
-
+    float duration_us; 
+    float distance_cm;
     int32_t boardingStartTime;
     int32_t MAX_PWM;
 
@@ -69,6 +70,9 @@ namespace CEP {
 
       pinMode(MOTOR_IN_1_PIN, OUTPUT);
       pinMode(MOTOR_IN_2_PIN, OUTPUT);
+
+      pinMode(TRIG_PIN, OUTPUT);
+      pinMode(ECHO_PIN, INPUT);
 
       doorServo.setPeriodHertz(50);
       doorServo.attach(SERVO_DATA_PIN, 500, 2400);
@@ -298,7 +302,7 @@ namespace CEP {
       }
 
       // Self-emergency stop
-      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
+      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN); //LOOK HERE ANAS
       if (somethingIsInFrontOfUs) {
         onStopCommand();
         sendMessage("Object detected infront, self-avoidance protocol activated");
@@ -357,7 +361,7 @@ namespace CEP {
       if (state.getState() == CEPState::APPROACHING_STATION) {
         // We've already slowed down at this point
         // Check for station IR LED
-        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN);
+        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN); //LOOK HERE ANAS
         if (ledIntensity > IR_PHOTORESISTOR_SENSITIVITY) {
           onStopCommand();
           state.arriveAtStation();
