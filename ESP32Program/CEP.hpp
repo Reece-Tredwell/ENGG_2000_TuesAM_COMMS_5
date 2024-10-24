@@ -378,6 +378,8 @@ namespace CEP {
         sendMessage("Lets get out of here mfs");
         state.proceedAfterDeparture();
       }
+
+      // 
     }
   };
 }
