@@ -1,7 +1,7 @@
 #pragma once
 #include "ErrorCode.hpp"
 #include <ArduinoJson.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 #include <WiFi.h>
 #include <WiFiUDP.h>
 #include "macros.hpp"
@@ -67,7 +67,8 @@ namespace CEP {
       pinMode(MOTOR_IN_1_PIN, OUTPUT);
       pinMode(MOTOR_IN_2_PIN, OUTPUT);
 
-      doorServo.attach(SERVO_DATA_PIN);
+      doorServo.setPeriodHertz(50);
+      doorServo.attach(SERVO_DATA_PIN, 500, 2400);
     }
     ErrorCode connect(const char* ssid, const IPAddress& rip, int rp) {
       remoteIP = rip;
@@ -378,6 +379,8 @@ namespace CEP {
         sendMessage("Lets get out of here mfs");
         state.proceedAfterDeparture();
       }
+
+      // 
     }
   };
 }
