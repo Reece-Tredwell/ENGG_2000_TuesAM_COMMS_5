@@ -27,9 +27,11 @@
 // Time to wait for boarding, in milliseconds
 #define BOARDING_TIME 10000
 
+#define MAX_PWM 100
+#define SPEED_THRESHOLD 0.5f
+
 // Pin locations for sensors
 #define IR_PHOTORESISTOR_PIN 23
-#define IR_SENSOR_PIN 25
 #define SERVO_DATA_PIN 24
 #define TRIG_PIN 16 
 #define ECHO_PIN 17

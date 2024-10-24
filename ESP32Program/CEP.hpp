@@ -34,14 +34,12 @@ namespace CEP {
 
     // Speed we need to build up to
     float requestedSpeed;
-    // Actualised speed
-    float actualisedSpeed;
     float motorSpeed;
     float SPEED_THRESHOLD;
+    
     float duration_us; 
     float distance_cm;
     int32_t boardingStartTime;
-    int32_t MAX_PWM;
 
     // ready is defined as having a connection and receiving the time command
     bool ready;
@@ -56,12 +54,7 @@ namespace CEP {
       ready = false;
     }
     ErrorCode setup() {
-      pinMode(IR_SENSOR_PIN, INPUT);
-
-      pinMode(IR_SENSOR_PIN, INPUT);
-      pinMode(IR_SENSOR_PIN, INPUT);
-      pinMode(IR_SENSOR_PIN, INPUT);
-      pinMode(IR_SENSOR_PIN, INPUT);
+      pinMode(IR_PHOTORESISTOR_PIN, INPUT);
 
       pinMode(G_LED_PIN, OUTPUT);
       pinMode(Y_LED_PIN, OUTPUT);
@@ -302,7 +295,7 @@ namespace CEP {
       }
 
       // Self-emergency stop
-      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN); //LOOK HERE ANAS
+      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN); // LOOK HERE ANAS
       if (somethingIsInFrontOfUs) {
         onStopCommand();
         sendMessage("Object detected infront, self-avoidance protocol activated");
@@ -334,7 +327,7 @@ namespace CEP {
                     analogWrite(MOTOR_IN_1_PIN, mapPWM((int)motorSpeed));
                     analogWrite(MOTOR_IN_2_PIN, mapPWM(0));
                 } else {
-                  int brakePWM = MAX_PWM - (int)motorSpeed;
+                    int brakePWM = MAX_PWM - (int)motorSpeed;
                     analogWrite(MOTOR_IN_1_PIN, mapPWM(MAX_PWM));
                     analogWrite(MOTOR_IN_2_PIN, mapPWM(brakePWM));
                 }
