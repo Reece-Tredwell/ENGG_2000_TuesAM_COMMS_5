@@ -35,8 +35,7 @@ namespace CEP {
     // Speed we need to build up to
     float requestedSpeed;
     float motorSpeed;
-    float SPEED_THRESHOLD;
-    
+
     float duration_us; 
     float distance_cm;
     int32_t boardingStartTime;
