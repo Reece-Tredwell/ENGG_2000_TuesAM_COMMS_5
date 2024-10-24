@@ -4,6 +4,8 @@
 
 CEP::CEP cep;
 
+float duration_us; 
+float distance_cm;
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting Program");
@@ -15,5 +17,12 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(TRIG_PIN, HIGH);
+  digitalWrite(TRIG_PIN, LOW);
+  duration_us = pulseIn(ECHO_PIN, HIGH);
+  distance_cm = 0.017 * duration_us;
+  Serial.print("distance: ");
+  Serial.print(distance_cm);
+  Serial.println(" cm");
   cep.processPackets();
 }

@@ -26,9 +26,11 @@
 #define BOARDING_TIME 10000
 
 // Pin locations for sensors
+#define IR_PHOTORESISTOR_PIN 23
 #define IR_SENSOR_PIN 25
 #define SERVO_DATA_PIN 24
-#define IR_PHOTORESISTOR_PIN 26
+#define TRIG_PIN 26 
+#define ECHO_PIN 27
 #define G_LED_PIN 11
 #define Y_LED_PIN 12
 #define R_LED_PIN 13
