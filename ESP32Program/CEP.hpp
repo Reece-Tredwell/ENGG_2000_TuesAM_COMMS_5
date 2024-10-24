@@ -1,7 +1,7 @@
 #pragma once
 #include "ErrorCode.hpp"
 #include <ArduinoJson.h>
-#include <ESP32ESP32Servo.h>
+#include <ESP32Servo.h>
 #include <WiFi.h>
 #include <WiFiUDP.h>
 #include "macros.hpp"
