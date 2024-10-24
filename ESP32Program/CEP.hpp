@@ -1,7 +1,7 @@
 #pragma once
 #include "ErrorCode.hpp"
 #include <ArduinoJson.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 #include <WiFi.h>
 #include <WiFiUDP.h>
 #include "macros.hpp"
@@ -35,9 +35,12 @@ namespace CEP {
     // Speed we need to build up to
     float requestedSpeed;
     // Actualised speed
+    float actualisedSpeed;
     float motorSpeed;
+    float SPEED_THRESHOLD;
 
     int32_t boardingStartTime;
+    int32_t MAX_PWM;
 
     // ready is defined as having a connection and receiving the time command
     bool ready;
@@ -67,7 +70,8 @@ namespace CEP {
       pinMode(MOTOR_IN_1_PIN, OUTPUT);
       pinMode(MOTOR_IN_2_PIN, OUTPUT);
 
-      doorServo.attach(SERVO_DATA_PIN);
+      doorServo.setPeriodHertz(50);
+      doorServo.attach(SERVO_DATA_PIN, 500, 2400);
     }
     ErrorCode connect(const char* ssid, const IPAddress& rip, int rp) {
       remoteIP = rip;
@@ -182,10 +186,10 @@ namespace CEP {
         if (state.getState() == CEPState::STATION_ARRIVAL) {
           state.beginBoarding();
         }
-        myServo.write(180);
+        doorServo.write(180); //myServo.write(180);
       // Assume close
       } else {
-        myServo.write(0);
+        doorServo.write(0); //myServo.write(0);
       }
       return ErrorCode::SUCCESSFUL;
     }
@@ -209,12 +213,12 @@ namespace CEP {
     }
     ErrorCode onLocateCommand() {
       state.approachStation();
-      actualisedSpeed = STATION_APPROACH_SPEED;
+      actualisedSpeed = STATION_APPROACH_SPEED; //requestedSpeed = STATION_APPROACH_SPEED;  
       return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onOvershotCommand() {
       state.overshotStation();
-      actualisedSpeed = STATION_OVERSHOOT_REVERSE_SPEED;
+      actualisedSpeed = STATION_OVERSHOOT_REVERSE_SPEED; //requestedSpeed = STATION_OVERSHOOT_REVERSE_SPEED;
       return ErrorCode::SUCCESSFUL;
     }
     void processPackets() {
@@ -274,8 +278,9 @@ namespace CEP {
     void update() {
       // Cause of the nature of the delay function, it does not gauranteed this runs at 1000 ups
       delay(1);
-      lastUpdateTime = currentTime;
       int32_t currentTime = getCurrentTime();
+      lastUpdateTime = currentTime;
+      //int32_t currentTime = getCurrentTime();
       // time variables are in milliseconds but delta time is best in seconds
       float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
 
@@ -298,7 +303,7 @@ namespace CEP {
         onStopCommand();
         sendMessage("Object detected infront, self-avoidance protocol activated");
         state.emergencyStop(currentTime);
-        actualisedSpeed = 0.0f;
+        requestedSpeed = 0.0f; //actualisedSpeed = 0.0f;
       } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
         sendMessage("Object has left, resuming as normal");
         state.clearEmergency();
@@ -378,6 +383,8 @@ namespace CEP {
         sendMessage("Lets get out of here mfs");
         state.proceedAfterDeparture();
       }
+
+      // 
     }
   };
 }
