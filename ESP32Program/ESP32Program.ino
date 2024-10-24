@@ -29,5 +29,7 @@ void loop() {
   Serial.print("distance: ");
   Serial.print(distance_cm);
   Serial.println(" cm");
-  cep.processPackets();
+
+  
+  cep.update();
 }
