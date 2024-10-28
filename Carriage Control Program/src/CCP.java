@@ -4,9 +4,11 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Random;
 
-import javax.swing.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JTextField;
 
 import java.nio.*;
 import java.nio.channels.*;
@@ -27,9 +29,9 @@ public class CCP {
     private InetSocketAddress cepIP;
     private int cepPort;
 
-    private boolean connectedToMCP = false;
     private boolean connectedToCEP = false;
-
+    private boolean connectedToMCP = false;
+    
     private int sequenceNumber;
 
     long mcpLastHeartbeatTime = 0;
@@ -47,6 +49,7 @@ public class CCP {
 
             // We expect heartbeats every 2 seconds
             mcpChannel.socket().setSoTimeout(6000);
+            cepChannel.socket().setSoTimeout(6000);
 
             mcpChannel.configureBlocking(false);
             cepChannel.configureBlocking(false);
@@ -54,6 +57,7 @@ public class CCP {
             System.out.println("Setup connections");
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
 
         // Select sequence number
@@ -185,8 +189,6 @@ public class CCP {
         if (mcpResponse != null) {
             String messageType = (String)mcpResponse.get("message");
 
-            mcpLastHeartbeatTime = System.currentTimeMillis();
-
             if (messageType.equals("AKIN")) {
                 // Do nothing
             } else if (messageType.equals("AKST")) {
@@ -291,7 +293,7 @@ public class CCP {
             if (response != null) {
                 String messageType = (String) response.get("message");
                 if (messageType.equals("AKIN")) {
-                    // sequenceNumber = (int)response.get("sequence_number");
+                    sequenceNumber = (int)response.get("sequence_number");
                     connectedToMCP = true;
                     System.out.println("Connected to MCP. MCP Sequence Number: " + sequenceNumber);
                 } else {
@@ -302,7 +304,7 @@ public class CCP {
                 sendMessageToMCP(ccinMessage);
                 // Once every 200ms
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(20000);
                 } catch (Exception e) {
                     // dont care
                 }
