@@ -4,26 +4,21 @@ public class CCPMainProcess{
 
     public CCPMainProcess(){
     }
-
     public JSONObject convertToCommand(JSONObject Data){
         //get the station
         String message = (String) Data.get("message");
-        JSONObject Tester;
+        JSONObject command;
         System.out.println(message);
         if(message == "EXEC"){
             String action = (String) Data.get("action");
-            Tester = new JSONObject();
-            Tester.put("cmd",message);
-            Tester.put("action",action);
+            command = new JSONObject();
+            command.put("cmd",message);
+            command.put("action",action);
         }else{
-            Tester = new JSONObject();
-            Tester.put("cmd",message);
+            command = new JSONObject();
+            command.put("cmd",message);
         }
-        System.out.println(Tester);
-        return Tester;
-    }
-
-    public void update(){
-
+        System.out.println(command);
+        return command;
     }
 }
