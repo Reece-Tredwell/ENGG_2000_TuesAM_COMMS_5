@@ -59,7 +59,7 @@ public class CCP {
         // Select sequence number
         sequenceNumber = new Random().nextInt(29001) + 1000;
 
-        // sendInitialisationMessages();
+        sendInitialisationMessages();
 
         // Once initialised, open UI
         System.out.println("Opening UI");
