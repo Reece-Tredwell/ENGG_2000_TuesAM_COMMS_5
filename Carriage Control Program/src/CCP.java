@@ -15,6 +15,7 @@ import java.nio.channels.*;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
+import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 
 public class CCP {
     private final String clientType = "CCP";
@@ -36,6 +37,7 @@ public class CCP {
 
     long mcpLastHeartbeatTime = 0;
     long cepLastHeartbeatTime = 0;
+    long lastStatusUpdate = 0;
 
     public void init(String mcpIp, String cepIp, int mcpPort, int cepPort) {
         try {
@@ -253,6 +255,12 @@ public class CCP {
             connectedToMCP = false;
             onStop();
         }
+
+        if (lastStatusUpdate - System.currentTimeMillis() > 2000) {
+            JSONObject status = generateStatus("FFASTC");
+            sendMessageToMCP(status);
+            lastStatusUpdate = System.currentTimeMillis();
+        } 
     }
     private void sendInitialisationMessages() {
         System.out.println("Sending initialisation messages");
