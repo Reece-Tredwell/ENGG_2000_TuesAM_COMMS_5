@@ -133,6 +133,13 @@ public class CCP {
 
         frame.setVisible(true);
     }
+    public void onStop() {
+        JSONObject stopCommand = new JSONObject();
+        stopCommand.put("cmd", "stop");
+        // doesn't even fucking matter, why did I implement this field
+        stopCommand.put("timestamp", System.currentTimeMillis());
+        sendMessageToCEP(stopCommand);
+    }
     public void onDoor(boolean state) {
         JSONObject closeCommand = new JSONObject();
         closeCommand.put("cmd", "door");
@@ -163,6 +170,15 @@ public class CCP {
         shutdown.put("cmd", "shutdown");
         sendMessageToCEP(shutdown);
     }
+    public JSONObject generateStatus(String statusType) {
+        JSONObject status = new JSONObject();
+        status.put("client_type", "CCP");
+        status.put("message", "STAT");
+        status.put("client_id", "BR10");
+        status.put("status", statusType);
+
+        return status;
+    }
     public void update() {
         JSONObject mcpResponse = receiveMessageFromMCP();
         if (mcpResponse != null) {
@@ -175,13 +191,15 @@ public class CCP {
             } else if (messageType.equals("AKST")) {
                 // Do nothing
             } else if (messageType.equals("STRQ")) {
-
+                JSONObject status = generateStatus("FFASTC");
+                sendMessageToMCP(status);
             } else if (messageType.equals("EXEC")) {
                 String actionType = (String)mcpResponse.get("action");
                 // Door open is 1, door close is 0
                 if (actionType.equals("STOPC")) {
                     onDoor(false);
                 } else if (actionType.equals("STOPO")) {
+                    onStop();
                     onDoor(true);
                 } else if (actionType.equals("FSLOWC")) {
                    onLocateStation();
@@ -191,11 +209,19 @@ public class CCP {
                     onReverseLocateStation();
                 } else if (actionType.equals("DISCONNECT")) {
                     onDisconnect();
+                    sendMessageToMCP(generateStatus("OFLN"));
                 } else {
                     System.out.print("Invalid actionType: ");
                     System.out.println(actionType);
                 }
             }
+
+            // Send acknowledgement
+            JSONObject ack = new JSONObject();
+            ack.put("client_type", "CCP");
+            ack.put("message", "AKEX");
+            ack.put("client_id", "BR10");
+            sendMessageToMCP(ack);
         }
 
         JSONObject cepResponse = receiveMessageFromCEP();
@@ -215,10 +241,14 @@ public class CCP {
         // Assume we lost connection to CEP
         if (cepLastHeartbeatTime != 0 && System.currentTimeMillis() - cepLastHeartbeatTime > 6000) {
             System.out.println("Lost connection to the CEP");
+            connectedToCEP = false;
+            sendMessageToMCP(generateStatus("ERR"));
         }
 
         if (mcpLastHeartbeatTime != 0 && System.currentTimeMillis() - mcpLastHeartbeatTime > 6000) {
             System.out.println("Lost connection to the MCP");
+            connectedToMCP = false;
+            onStop();
         }
     }
     private void sendInitialisationMessages() {

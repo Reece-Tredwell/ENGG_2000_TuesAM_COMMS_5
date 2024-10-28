@@ -40,6 +40,8 @@ namespace CEP {
     float distance_cm;
     int32_t boardingStartTime;
 
+    int32_t lastStatusUpdateTime;
+
     // ready is defined as having a connection and receiving the time command
     bool ready;
   public:
@@ -51,6 +53,7 @@ namespace CEP {
       boardingStartTime = 0;
       motorSpeed = 0;
       ready = false;
+      lastStatusUpdateTime = 0;
     }
     ErrorCode setup() {
       pinMode(IR_PHOTORESISTOR_PIN, INPUT);
@@ -271,6 +274,12 @@ namespace CEP {
         onLedCommand(B_LED_PIN, true);
         exit(-1);
     }
+    void sendStatusUpdate() {
+      // status update packet
+      // "state": cep state
+      // "speed": motorSpeed
+      // "doorState": boolean open or close
+    }
     void update() {
       // Cause of the nature of the delay function, it does not gauranteed this runs at 1000 ups
       delay(1);
@@ -291,6 +300,10 @@ namespace CEP {
       // Wait for heartbeat timeout
       if (ready && currentTime - lastHeartbeatReceivedTime > CEP_HEARTBEAT_TIMEOUT) {
         heartbeatTimeout();
+      }
+
+      if (ready && currentTIme - lastStatusUpdateTime > 2000) {
+        sendStatusUpdate();
       }
 
       // Self-emergency stop
@@ -314,14 +327,17 @@ namespace CEP {
       }
       // Apply speed changes
       if (state.getState() != CEPState::EMERGENCY_STOP) {
-        // Smooth acceleration and deceleration
+        // Calculate the speed difference
         float delta = requestedSpeed - motorSpeed;
-        // Decelerate faster than acceleration
+        // Determine the smoothing factor
         float smoothing = (delta > 0) ? 0.5f : 1.0f;
-        // Limit the maximum change in acceleration
-        float acceleration = delta * smoothing * deltaTime;
-        acceleration = constrain(acceleration, -MAX_ACCELERATION_CHANGE, MAX_ACCELERATION_CHANGE);
-        motorSpeed += acceleration;
+        // Calculate acceleration without deltaTime
+        float acceleration = delta * smoothing;
+        // Constrain the acceleration to maximum limits
+        acceleration = constrain(acceleration, -MAX_ACCELERATION, MAX_ACCELERATION);
+
+        // Update motor speed using deltaTime
+        motorSpeed += acceleration * deltaTime;
         bool accelerating = (delta * motorSpeed >= 0);
 
         // Handle motor control based on actualised speed
