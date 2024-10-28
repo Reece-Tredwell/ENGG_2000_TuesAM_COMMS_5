@@ -1,7 +1,7 @@
 #pragma once
 #include "ErrorCode.hpp"
 #include <ArduinoJson.h>
-#include <Servo.h>
+#include <ESP32Servo.h>
 #include <WiFi.h>
 #include <WiFiUDP.h>
 #include "macros.hpp"
@@ -34,9 +34,10 @@ namespace CEP {
 
     // Speed we need to build up to
     float requestedSpeed;
-    // Actualised speed
     float motorSpeed;
 
+    float duration_us; 
+    float distance_cm;
     int32_t boardingStartTime;
 
     // ready is defined as having a connection and receiving the time command
@@ -52,12 +53,7 @@ namespace CEP {
       ready = false;
     }
     ErrorCode setup() {
-      pinMode(IR_SENSOR_PIN, INPUT);
-
-      pinMode(IR_SENSOR_PIN, INPUT);
-      pinMode(IR_SENSOR_PIN, INPUT);
-      pinMode(IR_SENSOR_PIN, INPUT);
-      pinMode(IR_SENSOR_PIN, INPUT);
+      pinMode(IR_PHOTORESISTOR_PIN, INPUT);
 
       pinMode(G_LED_PIN, OUTPUT);
       pinMode(Y_LED_PIN, OUTPUT);
@@ -67,7 +63,11 @@ namespace CEP {
       pinMode(MOTOR_IN_1_PIN, OUTPUT);
       pinMode(MOTOR_IN_2_PIN, OUTPUT);
 
-      doorServo.attach(SERVO_DATA_PIN);
+      pinMode(TRIG_PIN, OUTPUT);
+      pinMode(ECHO_PIN, INPUT);
+
+      doorServo.setPeriodHertz(50);
+      doorServo.attach(SERVO_DATA_PIN, 500, 2400);
     }
     ErrorCode connect(const char* ssid, const IPAddress& rip, int rp) {
       remoteIP = rip;
@@ -176,13 +176,18 @@ namespace CEP {
       requestedSpeed = (float)speed;
       return ErrorCode::SUCCESSFUL;
     }
-    ErrorCode onDoorCommand(bool state) {
-      if (state) {
-        myServo.write(180);
+    ErrorCode onDoorCommand(bool doorState) {
+      // Assume open
+      if (doorState) {
+        if (state.getState() == CEPState::STATION_ARRIVAL) {
+          state.beginBoarding();
+        }
+        doorServo.write(180); //myServo.write(180);
+      // Assume close
       } else {
-        myServo.write(0);
+        doorServo.write(0); //myServo.write(0);
       }
-      return ErrorCode::NOT_IMPLEMENTED;
+      return ErrorCode::SUCCESSFUL;
     }
     ErrorCode onLedCommand(int32_t pin, bool state) {
       digitalWrite(pin, state);
@@ -204,7 +209,13 @@ namespace CEP {
     }
     ErrorCode onLocateCommand() {
       state.approachStation();
-      actualisedSpeed = STATION_APPROACH_SPEED;
+      requestedSpeed = STATION_APPROACH_SPEED;
+      return ErrorCode::SUCCESSFUL;
+    }
+    ErrorCode onOvershotCommand() {
+      state.overshotStation();
+      requestedSpeed = STATION_OVERSHOOT_REVERSE_SPEED;
+      return ErrorCode::SUCCESSFUL;
     }
     void processPackets() {
       while (udp.parsePacket() != 0) {
@@ -240,6 +251,8 @@ namespace CEP {
           onShutdownCommand();
         } else if (command == "locate_station") {
           onLocateCommand();
+        } else if (command == "overshot_station") {
+          onOvershotCommand();
         } else {
           Serial.print("Received unknown command ");
           Serial.println(command);
@@ -261,8 +274,9 @@ namespace CEP {
     void update() {
       // Cause of the nature of the delay function, it does not gauranteed this runs at 1000 ups
       delay(1);
-      lastUpdateTime = currentTime;
       int32_t currentTime = getCurrentTime();
+      lastUpdateTime = currentTime;
+      //int32_t currentTime = getCurrentTime();
       // time variables are in milliseconds but delta time is best in seconds
       float deltaTime = (currentTime - lastUpdateTime) / 1000.0f;
 
@@ -280,38 +294,46 @@ namespace CEP {
       }
 
       // Self-emergency stop
-      bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN);
-      if (somethingIsInFrontOfUs) {
-        onStopCommand();
-        sendMessage("Object detected infront, self-avoidance protocol activated");
-        state.emergencyStop(currentTime);
-        actualisedSpeed = 0.0f;
-      } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
-        sendMessage("Object has left, resuming as normal");
-        state.clearEmergency();
+      if (state.getState() == CEPState::MOVING) {
+        digitalWrite(TRIG_PIN, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(TRIG_PIN, LOW);
+        duration_us = pulseIn(ECHO_PIN, HIGH);
+        distance_cm = 0.01715 * duration_us;
+        // Actual 20cm, measurements is fucked
+        bool somethingIsInFrontOfUs = distance_cm < 40;
+        if (somethingIsInFrontOfUs) {
+          onStopCommand();
+          sendMessage("Object detected infront, self-avoidance protocol activated");
+          state.emergencyStop(currentTime);
+          requestedSpeed = 0.0f;
+        } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
+          sendMessage("Object has left, resuming as normal");
+          state.clearEmergency();
+        }
       }
-
       // Apply speed changes
       if (state.getState() != CEPState::EMERGENCY_STOP) {
         // Smooth acceleration and deceleration
-        float delta = requestedSpeed - actualisedSpeed;
+        float delta = requestedSpeed - motorSpeed;
         // Decelerate faster than acceleration
         float smoothing = (delta > 0) ? 0.5f : 1.0f;
         // Limit the maximum change in acceleration
         float acceleration = delta * smoothing * deltaTime;
         acceleration = constrain(acceleration, -MAX_ACCELERATION_CHANGE, MAX_ACCELERATION_CHANGE);
-        actualisedSpeed += acceleration;
-        bool accelerating = (delta * actualisedSpeed >= 0);
+        motorSpeed += acceleration;
+        bool accelerating = (delta * motorSpeed >= 0);
 
         // Handle motor control based on actualised speed
-        if (fabs(actualisedSpeed) > SPEED_THRESHOLD) {
-            if (actualisedSpeed > 0) {
+        if (fabs(motorSpeed) > SPEED_THRESHOLD) {
+          state.beginMoving();
+            if (motorSpeed > 0) {
                 // Forward motion
                 if (accelerating) {
-                    analogWrite(MOTOR_IN_1_PIN, mapPWM((int)actualisedSpeed));
+                    analogWrite(MOTOR_IN_1_PIN, mapPWM((int)motorSpeed));
                     analogWrite(MOTOR_IN_2_PIN, mapPWM(0));
                 } else {
-                  int brakePWM = MAX_PWM - (int)actualisedSpeed;
+                    int brakePWM = MAX_PWM - (int)motorSpeed;
                     analogWrite(MOTOR_IN_1_PIN, mapPWM(MAX_PWM));
                     analogWrite(MOTOR_IN_2_PIN, mapPWM(brakePWM));
                 }
@@ -319,9 +341,9 @@ namespace CEP {
                 // Reverse motion
                 if (accelerating) {
                     analogWrite(MOTOR_IN_1_PIN, mapPWM(0));
-                    analogWrite(MOTOR_IN_2_PIN, mapPWM((int)(-actualisedSpeed)));
+                    analogWrite(MOTOR_IN_2_PIN, mapPWM((int)(-motorSpeed)));
                 } else {
-                    int brakePWM = MAX_PWM + (int)actualisedSpeed; // actualisedSpeed is negative
+                    int brakePWM = MAX_PWM + (int)motorSpeed; // motorSpeed is negative
                     analogWrite(MOTOR_IN_1_PIN, mapPWM(brakePWM));
                     analogWrite(MOTOR_IN_2_PIN, mapPWM(MAX_PWM));
                 }
@@ -338,21 +360,34 @@ namespace CEP {
       if (state.getState() == CEPState::APPROACHING_STATION) {
         // We've already slowed down at this point
         // Check for station IR LED
-        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN);
+        int ledIntensity = digitalRead(IR_PHOTORESISTOR_PIN); //LOOK HERE ANAS
         if (ledIntensity > IR_PHOTORESISTOR_SENSITIVITY) {
           onStopCommand();
           state.arriveAtStation();
         }
       }
+      
+      if (state.getState() == CEPState::OVERSHOT_STATION) {
+        sendMessage("FUCK me, I overshot the station");
+      }
 
       if (state.getState() == CEPState::STATION_ARRIVAL) {
-        boardingStartTime = currentTime
+        boardingStartTime = currentTime;
+        sendMessage("Arrived at station, waiting for boarding commands");
       }
 
       // Boarding procedure
-      if (currentTIme - boardingStartTime > state.getState() == CEPState::BOARDING) {
-        
+      if (state.getState() == CEPState::BOARDING) {
+        // Doors should be open by this point
       }
+
+      if (state.getState() == CEPState::STATION_DEPARTURE) {
+        // Doors should be closed
+        sendMessage("Lets get out of here mfs");
+        state.proceedAfterDeparture();
+      }
+
+      // 
     }
   };
 }
