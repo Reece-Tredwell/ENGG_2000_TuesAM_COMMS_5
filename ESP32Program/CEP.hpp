@@ -294,17 +294,24 @@ namespace CEP {
       }
 
       // Self-emergency stop
-      // bool somethingIsInFrontOfUs = digitalRead(IR_SENSOR_PIN); // LOOK HERE ANAS
-      // if (somethingIsInFrontOfUs) {
-      //   onStopCommand();
-      //   sendMessage("Object detected infront, self-avoidance protocol activated");
-      //   state.emergencyStop(currentTime);
-      //   requestedSpeed = 0.0f;
-      // } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
-      //   sendMessage("Object has left, resuming as normal");
-      //   state.clearEmergency();
-      // }
-
+      if (state.getState() == CEPState::MOVING) {
+        digitalWrite(TRIG_PIN, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(TRIG_PIN, LOW);
+        duration_us = pulseIn(ECHO_PIN, HIGH);
+        distance_cm = 0.01715 * duration_us;
+        // Actual 20cm, measurements is fucked
+        bool somethingIsInFrontOfUs = distance_cm < 40;
+        if (somethingIsInFrontOfUs) {
+          onStopCommand();
+          sendMessage("Object detected infront, self-avoidance protocol activated");
+          state.emergencyStop(currentTime);
+          requestedSpeed = 0.0f;
+        } else if (state.timeSinceEmergencyStop(currentTime) > EMERGENCY_STOP_SENDOFF_TIME && state.getState() == CEPState::EMERGENCY_STOP) {
+          sendMessage("Object has left, resuming as normal");
+          state.clearEmergency();
+        }
+      }
       // Apply speed changes
       if (state.getState() != CEPState::EMERGENCY_STOP) {
         // Smooth acceleration and deceleration

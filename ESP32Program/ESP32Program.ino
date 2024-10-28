@@ -20,16 +20,6 @@ void setup() {
 
 }
 
-void loop() {
-  digitalWrite(TRIG_PIN, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_PIN, LOW);
-  duration_us = pulseIn(ECHO_PIN, HIGH);
-  distance_cm = 0.017 * duration_us;
-  Serial.print("distance: ");
-  Serial.print(distance_cm);
-  Serial.println(" cm");
-
-  
+void loop() {  
   cep.update();
 }
