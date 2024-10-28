@@ -327,15 +327,15 @@ public class CCP {
             }
             
             // Sequence number handling
-            // int seqNum = (int)message.get("sequence_number");
-            // if (sequenceNumber == -1) {
-            //     sequenceNumber = seqNum;
-            // } else if (seqNum == sequenceNumber + 1) {
-            //     sequenceNumber = seqNum;
-            // } else {
-            //     System.out.println("Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
-            //     // Handle sequence number error with resync mechanism
-            // }
+            int seqNum = (int)message.get("sequence_number");
+            if (sequenceNumber == -1) {
+                sequenceNumber = seqNum;
+            } else if (seqNum == sequenceNumber + 1) {
+                sequenceNumber = seqNum;
+            } else {
+                System.out.println("Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
+                // Handle sequence number error with resync mechanism
+            }
 
             mcpLastHeartbeatTime = System.currentTimeMillis();
             return message;
