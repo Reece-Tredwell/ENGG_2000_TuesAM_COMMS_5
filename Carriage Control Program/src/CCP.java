@@ -179,6 +179,7 @@ public class CCP {
 
         return status;
     }
+
     public void update() {
         JSONObject mcpResponse = receiveMessageFromMCP();
         if (mcpResponse != null) {
@@ -279,6 +280,7 @@ public class CCP {
         ccinMessage.put("client_type", clientType);
         ccinMessage.put("message", "CCIN");
         ccinMessage.put("client_id", clientID);
+        ccinMessage.put("sequence_number", sequenceNumber);
         sendMessageToMCP(ccinMessage);
         System.out.println("Sent CCIN message");
         System.out.println("Awaiting MCP AKIN");
@@ -287,7 +289,7 @@ public class CCP {
         while (!connectedToMCP) {
             JSONObject response = receiveMessageFromMCP();
             if (response != null) {
-                String messageType = (String)response.get("message");
+                String messageType = (String) response.get("message");
                 if (messageType.equals("AKIN")) {
                     // sequenceNumber = (int)response.get("sequence_number");
                     connectedToMCP = true;
@@ -302,11 +304,12 @@ public class CCP {
                 try {
                     Thread.sleep(2000);
                 } catch (Exception e) {
-                    // don t  car e
+                    // dont care
                 }
             }
         }
     }
+
     private void sendMessage(DatagramChannel channel, SocketAddress ip, JSONObject message) throws Exception {
         String messageStr = message.toString();
         ByteBuffer sendBuffer = ByteBuffer.allocate(2048);
@@ -340,6 +343,7 @@ public class CCP {
             e.printStackTrace();
         }
     }
+
     // Send a message to the CEP
     private void sendMessageToCEP(JSONObject message) {
         try {
@@ -350,20 +354,21 @@ public class CCP {
     }
     private JSONObject receiveMessageFromMCP() {
         try {
-           JSONObject message = receiveMessage(mcpChannel);
+            JSONObject message = receiveMessage(mcpChannel);
 
             if (message == null) {
                 return null;
             }
-            
+
             // Sequence number handling
-            int seqNum = (int)message.get("sequence_number");
+            int seqNum = (int) message.get("sequence_number");
             if (sequenceNumber == -1) {
                 sequenceNumber = seqNum;
             } else if (seqNum == sequenceNumber + 1) {
                 sequenceNumber = seqNum;
             } else {
-                System.out.println("Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
+                System.out.println(
+                        "Sequence number mismatch. Expected: " + (sequenceNumber + 1) + ", Received: " + seqNum);
                 // Handle sequence number error with resync mechanism
             }
 
@@ -377,6 +382,7 @@ public class CCP {
             return null;
         }
     }
+
     private JSONObject receiveMessageFromCEP() {
         try {
             JSONObject message = receiveMessage(cepChannel);
