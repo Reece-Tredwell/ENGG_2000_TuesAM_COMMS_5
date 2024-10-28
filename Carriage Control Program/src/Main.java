@@ -4,7 +4,7 @@ public class Main {
         final boolean isMockingMCP = false;
 
         // Redirect for mock tests
-        String mcpIpRedirect = (isMockingMCP) ? "" : "10.20.30.1";
+        String mcpIpRedirect = (isMockingMCP) ? "" : "10.20.30.185";
 
         // MockMCP MCP = null;
         // if (isMockingMCP) {
@@ -17,9 +17,9 @@ public class Main {
         
         while (true) {
             CCP.update();
-            if (CCP != null) {
-                CCP.update();
-            }
+            // if (MCP != null) {
+            //     MCP.update();
+            // }
         }
     }
 }
