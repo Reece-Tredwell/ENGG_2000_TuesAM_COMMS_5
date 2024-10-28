@@ -7,7 +7,7 @@
 #define CEP_HEARTBEAT_DELAY 2000
 
 // maximum change in acceleration that can be observed;
-#define MAX_ACCELERATION_CHANGE 5.0f
+#define MAX_ACCELERATION_CHANGE 20.0f
 
 // Time to wait after an obstruction is cleared to begin moving again
 // In millseconds
