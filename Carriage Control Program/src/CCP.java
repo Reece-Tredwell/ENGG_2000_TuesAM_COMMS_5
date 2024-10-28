@@ -4,6 +4,10 @@ import java.net.SocketAddress;
 import java.net.SocketTimeoutException;
 import java.util.Random;
 
+import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
 import java.nio.*;
 import java.nio.channels.*;
 
@@ -56,6 +60,124 @@ public class CCP {
         sequenceNumber = new Random().nextInt(29001) + 1000;
 
         sendInitialisationMessages();
+
+        // Once initialised, open UI
+        System.out.println("Opening UI");
+        JFrame frame = new JFrame("Packet Sender UI");
+        frame.setSize(400, 300);
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setLayout(null);
+
+        // Button for STOPC
+        JButton stopcButton = new JButton("STOPC");
+        stopcButton.setBounds(50, 20, 100, 30);
+        stopcButton.addActionListener(e -> {
+           onDoor(false);
+        });
+        frame.add(stopcButton);
+
+        // Button for STOPO
+        JButton stopoButton = new JButton("STOPO");
+        stopoButton.setBounds(200, 20, 100, 30);
+        stopoButton.addActionListener(e -> {
+            onDoor(true);
+        });
+        frame.add(stopoButton);
+
+        // Button for FSLOWC
+        JButton fslowcButton = new JButton("FSLOWC");
+        fslowcButton.setBounds(50, 70, 100, 30);
+        fslowcButton.addActionListener(e -> {
+            onLocateStation();
+        });
+        frame.add(fslowcButton);
+
+        // Button and field for FFASTC
+        JLabel speedLabel = new JLabel("Speed:");
+        speedLabel.setBounds(200, 70, 50, 30);
+        frame.add(speedLabel);
+
+        JTextField speedField = new JTextField("100");  // Default speed
+        speedField.setBounds(250, 70, 50, 30);
+        frame.add(speedField);
+
+        JButton ffastcButton = new JButton("FFASTC");
+        ffastcButton.setBounds(50, 120, 100, 30);
+        ffastcButton.addActionListener(e -> {
+            int speed;
+            try {
+                speed = Integer.parseInt(speedField.getText());
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(frame, "Invalid speed value");
+                return;
+            }
+            onSpeedCommand(speed);
+        });
+        frame.add(ffastcButton);
+
+        // Button for RSLOWC
+        JButton rslowcButton = new JButton("RSLOWC");
+        rslowcButton.setBounds(200, 120, 100, 30);
+        rslowcButton.addActionListener(e -> {
+            onReverseLocateStation();
+        });
+        frame.add(rslowcButton);
+
+        // Button for DISCONNECT
+        JButton disconnectButton = new JButton("DISCONNECT");
+        disconnectButton.setBounds(125, 170, 100, 30);
+        disconnectButton.addActionListener(e -> {
+            onDisconnect();
+        });
+        frame.add(disconnectButton);
+
+        frame.setVisible(true);
+    }
+    public void onStop() {
+        JSONObject stopCommand = new JSONObject();
+        stopCommand.put("cmd", "stop");
+        // doesn't even fucking matter, why did I implement this field
+        stopCommand.put("timestamp", System.currentTimeMillis());
+        sendMessageToCEP(stopCommand);
+    }
+    public void onDoor(boolean state) {
+        JSONObject closeCommand = new JSONObject();
+        closeCommand.put("cmd", "door");
+        // doesn't even fucking matter, why did I implement this field
+        closeCommand.put("timestamp", System.currentTimeMillis());
+        closeCommand.put("state", state);
+        sendMessageToCEP(closeCommand);
+    }
+    public void onLocateStation() {
+        JSONObject locatingCommand = new JSONObject();
+        locatingCommand.put("cmd", "locate_station");
+        sendMessageToCEP(locatingCommand); 
+    }
+    public void onSpeedCommand(int speed) {
+        JSONObject fullSpeedAhead = new JSONObject();
+        fullSpeedAhead.put("cmd", "speed");
+        fullSpeedAhead.put("timestamp", System.currentTimeMillis());
+        fullSpeedAhead.put("speed", speed);
+        sendMessageToCEP(fullSpeedAhead);
+    }
+    public void onReverseLocateStation() {
+        JSONObject reverseIntoStation = new JSONObject();
+        reverseIntoStation.put("cmd", "locate_station");
+       sendMessageToCEP(reverseIntoStation);
+    }
+    public void onDisconnect() {
+        JSONObject shutdown = new JSONObject();
+        shutdown.put("cmd", "shutdown");
+        sendMessageToCEP(shutdown);
+    }
+    public JSONObject generateStatus(String statusType) {
+        JSONObject status = new JSONObject();
+        status.put("client_type", "CCP");
+        status.put("message", "STAT");
+        status.put("client_id", "BR10");
+        status.put("status", statusType);
+
+        return status;
     }
 
     public void update() {
@@ -70,47 +192,37 @@ public class CCP {
             } else if (messageType.equals("AKST")) {
                 // Do nothing
             } else if (messageType.equals("STRQ")) {
-
+                JSONObject status = generateStatus("FFASTC");
+                sendMessageToMCP(status);
             } else if (messageType.equals("EXEC")) {
                 String actionType = (String)mcpResponse.get("action");
                 // Door open is 1, door close is 0
                 if (actionType.equals("STOPC")) {
-                    JSONObject closeCommand = new JSONObject();
-                    closeCommand.put("cmd", "door");
-                    // doesn't even fucking matter, why did I implement this field
-                    closeCommand.put("timestamp", System.currentTimeMillis());
-                    closeCommand.put("state", 0);
-                    sendMessageToCEP(closeCommand);
+                    onDoor(false);
                 } else if (actionType.equals("STOPO")) {
-                    JSONObject openCommand = new JSONObject();
-                    openCommand.put("cmd", "door");
-                    // doesn't even fucking matter, why did I implement this field
-                    openCommand.put("timestamp", System.currentTimeMillis());
-                    openCommand.put("state", 1);
-                    sendMessageToCEP(openCommand);
+                    onStop();
+                    onDoor(true);
                 } else if (actionType.equals("FSLOWC")) {
-                   JSONObject locatingCommand = new JSONObject();
-                   locatingCommand.put("cmd", "locate_station");
-                   sendMessageToCEP(locatingCommand); 
+                   onLocateStation();
                 } else if (actionType.equals("FFASTC")) {
-                    JSONObject fullSpeedAhead = new JSONObject();
-                    fullSpeedAhead.put("cmd", "speed");
-                    fullSpeedAhead.put("timestamp", System.currentTimeMillis());
-                    fullSpeedAhead.put("speed", 100);
-                    sendMessageToCEP(fullSpeedAhead);
+                   onSpeedCommand(100);
                 } else if (actionType.equals("RSLOWC")) {
-                    JSONObject reverseIntoStation = new JSONObject();
-                    reverseIntoStation.put("cmd", "locate_station");
-                   sendMessageToCEP(reverseIntoStation);
+                    onReverseLocateStation();
                 } else if (actionType.equals("DISCONNECT")) {
-                    JSONObject shutdown = new JSONObject();
-                    shutdown.put("cmd", "shutdown");
-                    sendMessageToCEP(shutdown);
+                    onDisconnect();
+                    sendMessageToMCP(generateStatus("OFLN"));
                 } else {
                     System.out.print("Invalid actionType: ");
                     System.out.println(actionType);
                 }
             }
+
+            // Send acknowledgement
+            JSONObject ack = new JSONObject();
+            ack.put("client_type", "CCP");
+            ack.put("message", "AKEX");
+            ack.put("client_id", "BR10");
+            sendMessageToMCP(ack);
         }
 
         JSONObject cepResponse = receiveMessageFromCEP();
@@ -130,10 +242,14 @@ public class CCP {
         // Assume we lost connection to CEP
         if (cepLastHeartbeatTime != 0 && System.currentTimeMillis() - cepLastHeartbeatTime > 6000) {
             System.out.println("Lost connection to the CEP");
+            connectedToCEP = false;
+            sendMessageToMCP(generateStatus("ERR"));
         }
 
         if (mcpLastHeartbeatTime != 0 && System.currentTimeMillis() - mcpLastHeartbeatTime > 6000) {
             System.out.println("Lost connection to the MCP");
+            connectedToMCP = false;
+            onStop();
         }
     }
     private void sendInitialisationMessages() {
@@ -175,7 +291,7 @@ public class CCP {
             if (response != null) {
                 String messageType = (String) response.get("message");
                 if (messageType.equals("AKIN")) {
-                    sequenceNumber = (int)response.get("sequence_number");
+                    // sequenceNumber = (int)response.get("sequence_number");
                     connectedToMCP = true;
                     System.out.println("Connected to MCP. MCP Sequence Number: " + sequenceNumber);
                 } else {

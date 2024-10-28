@@ -20,7 +20,7 @@ namespace CEP {
       int32_t emergencyStopTime = 0;
     public:
       CEPStateMachine() {
-        state = CEPState::INIT,
+        state = CEPState::INIT;
       }
       CEPState getState() {
         return state;
@@ -95,5 +95,5 @@ namespace CEP {
       void networkDisconnected() {
         state = CEPState::NETWORK_DISCONNECTED;
       }
-  }
+  };
 }

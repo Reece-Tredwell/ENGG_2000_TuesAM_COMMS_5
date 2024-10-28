@@ -2,12 +2,12 @@
 // In seconds
 #define CEP_WIFI_TIMEOUT 5
 // In milliseconds
-#define CEP_HEARTBEAT_TIMEOUT 5000
+#define CEP_HEARTBEAT_TIMEOUT 6000
 // In milliseconds, time between each heartbeat
 #define CEP_HEARTBEAT_DELAY 2000
 
 // maximum change in acceleration that can be observed;
-#define MAX_ACCELERATION_CHANGE 5.0f
+#define MAX_ACCELERATION_CHANGE 20.0f
 
 // Time to wait after an obstruction is cleared to begin moving again
 // In millseconds
@@ -22,14 +22,19 @@
 // value between 0 and 1024, where 0 is always pass, 1024 is maximum intensity to pass
 #define IR_PHOTORESISTOR_SENSITIVITY 128
 
+#define SENSOR_DISTANCE 588
+
 // Time to wait for boarding, in milliseconds
 #define BOARDING_TIME 10000
 
+#define MAX_PWM 100
+#define SPEED_THRESHOLD 0.5f
+
 // Pin locations for sensors
-#define IR_SENSOR_PIN 25
+#define IR_PHOTORESISTOR_PIN 23
 #define SERVO_DATA_PIN 24
-#define IR_PHOTORESISTOR_PIN 26
-#define PHOTORESISTOR_1_PIN 23
+#define TRIG_PIN 16 
+#define ECHO_PIN 17
 #define G_LED_PIN 11
 #define Y_LED_PIN 12
 #define R_LED_PIN 13
